@@ -4,6 +4,35 @@ local L = LibStub("AceLocale-3.0"):GetLocale('GuildRecruiter')
 ns.frames = {}
 local frames = ns.frames
 
+frames.BUTTON_LOCKED = frames.ICON_PATH..'GLH_Locked'
+frames.BUTTON_UNLOCKED = frames.ICON_PATH..'GLH_Unlocked'
+
+-- Backdrop Templates
+frames.DEFAULT_BORDER = 'Interface\\Tooltips\\UI-Tooltip-Border'
+frames.BLANK_BACKGROUND = 'Interface\\Buttons\\WHITE8x8'
+frames.DIALOGUE_BACKGROUND = 'Interface\\DialogFrame\\UI-DialogBox-Background'
+function frames.frames.BackdropTemplate(bgImage, edgeImage, tile, tileSize, edgeSize, insets)
+	tile = tile == 'NO_TILE' and false or true
+
+	return {
+		bgFile = bgImage or DIALOGUE_BACKGROUND,
+		edgeFile = edgeImage or DEFAULT_BORDER,
+		tile = true,
+		tileSize = tileSize or 16,
+		edgeSize = edgeSize or 16,
+		insets = insets or { left = 3, right = 3, top = 3, bottom = 3 }
+	}
+end
+
+-- Frame Stratas
+frames.BACKGROUND_STRATA = 'BACKGROUND'
+frames.LOW_STRATA = 'LOW'
+frames.MEDIUM_STRATA = 'MEDIUM'
+frames.HIGH_STRATA = 'HIGH'
+frames.DIALOG_STRATA = 'DIALOG'
+frames.TOOLTIP_STRATA = 'TOOLTIP'
+frames.DEFAULT_STRATA = frames.BACKGROUND_STRATA
+
 local FramePool = {}
 
 -- Function to reset a frame and all of its children
@@ -28,7 +57,7 @@ function frames:ResetFrame(frame)
 end
 
 -- Function to get a frame from the pool or create a new one
-function frames:new(name, parent, useBackdrop, frameType)
+function frames:new(name, parent, useBackdrop, backdropTemplate, frameType)
     -- Check if a frame is available in the pool
     local frame = table.remove(FramePool)
 
@@ -57,12 +86,7 @@ function frames:new(name, parent, useBackdrop, frameType)
             if not frame.SetBackdrop then
                 Mixin(frame, BackdropTemplateMixin)  -- Ensure the backdrop is available
             end
-            frame:SetBackdrop({
-                bgFile = "Interface/Tooltips/UI-Tooltip-Background",
-                edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
-                tile = true, tileSize = 16, edgeSize = 16,
-                insets = { left = 4, right = 4, top = 4, bottom = 4 }
-            })
+            frame:SetBackdrop(backdropTemplate or GLH.BACKDROP_TEMPLATE)
             frame:SetBackdropColor(0, 0, 0, 0.5)
         else
             -- Clear the backdrop if not required

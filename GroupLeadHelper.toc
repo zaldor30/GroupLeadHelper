@@ -7,7 +7,7 @@
 ## Notes: Easy track important information about your group members.
 ## Author: Moonfury
 ## SavedVariables: RaidLeadHelperDB
-## IconTexture: Interface\AddOns\GuildRecruiter\Images\GR_Icon
+## IconTexture: Interface\AddOns\GroupLeadHelper\Images\GLH_Icon
 ## OptionalDeps: Ace3
 
 Libs\LibStub\LibStub.lua
@@ -31,3 +31,4 @@ Libs\LibDeflate\LibDeflate.lua
 
 locales\Locales.xml
 
+GLH_Init.lua
