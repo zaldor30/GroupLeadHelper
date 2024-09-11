@@ -1,0 +1,81 @@
+local _, ns = ... -- Namespace (myaddon, namespace)
+local L = LibStub("AceLocale-3.0"):GetLocale('GuildRecruiter')
+
+ns.frames = {}
+local frames = ns.frames
+
+local FramePool = {}
+
+-- Function to reset a frame and all of its children
+function frames:ResetFrame(frame)
+    -- Clear all children
+    local numChildren = select("#", frame:GetChildren())
+    for i = 1, numChildren do
+        local child = select(i, frame:GetChildren())
+        child:Hide()
+        child:SetParent(nil)
+    end
+
+    -- Clear any scripts
+    frame:SetScript("OnUpdate", nil)
+    frame:SetScript("OnEvent", nil)
+
+    -- Reset position
+    frame:ClearAllPoints()
+
+    -- Hide the frame
+    frame:Hide()
+end
+
+-- Function to get a frame from the pool or create a new one
+function frames:new(name, parent, useBackdrop, frameType)
+    -- Check if a frame is available in the pool
+    local frame = table.remove(FramePool)
+
+    if not frame then
+        -- No available frames, create a new one
+        frame = CreateFrame(frameType or "Frame", name, parent, useBackdrop and "BackdropTemplate" or nil)
+
+        -- If using the BackdropTemplate, set up the backdrop
+        if useBackdrop then
+            frame:SetBackdrop({
+                bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+                edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+                tile = true, tileSize = 16, edgeSize = 16,
+                insets = { left = 4, right = 4, top = 4, bottom = 4 }
+            })
+            frame:SetBackdropColor(0, 0, 0, 0.5)  -- Example: semi-transparent black background
+        end
+    else
+        -- Reuse frame, reset its properties
+        frame:SetParent(parent or UIParent)
+        frame:SetName(name)
+        self:ResetFrame(frame)
+
+        -- Handle BackdropTemplate logic
+        if useBackdrop then
+            if not frame.SetBackdrop then
+                Mixin(frame, BackdropTemplateMixin)  -- Ensure the backdrop is available
+            end
+            frame:SetBackdrop({
+                bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+                edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+                tile = true, tileSize = 16, edgeSize = 16,
+                insets = { left = 4, right = 4, top = 4, bottom = 4 }
+            })
+            frame:SetBackdropColor(0, 0, 0, 0.5)
+        else
+            -- Clear the backdrop if not required
+            frame:SetBackdrop(nil)
+        end
+    end
+
+    frame:Show()
+    return frame
+end
+
+-- Function to return a frame to the pool
+function frames:release(frame)
+    self:ResetFrame(frame)
+    table.insert(FramePool, frame)
+end
