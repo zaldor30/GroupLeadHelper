@@ -97,90 +97,39 @@ function frames:release(frame)
     table.insert(FramePool, frame)
 end
 
--- Function to create a fade-out animation group
-local function CreateFadeOutAnimation(fontString, onComplete)
-    -- Create the animation group for the fade-out
-    local fadeOutGroup = fontString:CreateAnimationGroup()
-
-    -- Define the fade-out alpha animation
-    local fadeOut = fadeOutGroup:CreateAnimation("Alpha")
-    fadeOut:SetFromAlpha(1)  -- Start fully visible
-    fadeOut:SetToAlpha(0)    -- End fully invisible
-    fadeOut:SetDuration(1.5) -- Duration for fade-out
-    fadeOut:SetSmoothing("IN_OUT") -- Smooth transition
-
-    -- Callback when fade-out completes
-    fadeOutGroup:SetScript("OnFinished", function()
-        if onComplete then
-            onComplete()  -- Trigger the onComplete function to switch the text
-        end
-    end)
-
-    return fadeOutGroup
-end
-
--- Create an AnimationGroup for fade-out
-local function CreateFadeOutAnimation(fontString, onComplete)
-    -- Create the animation group for the fade-out
-    local fadeOutGroup = fontString:CreateAnimationGroup()
-
-    -- Define the fade-out alpha animation
-    local fadeOut = fadeOutGroup:CreateAnimation("Alpha")
-    fadeOut:SetFromAlpha(1)  -- Start fully visible
-    fadeOut:SetToAlpha(0)    -- End fully invisible
-    fadeOut:SetDuration(1.5) -- Time to fade out
-    fadeOut:SetSmoothing("IN_OUT") -- Smooth transition
-
-    -- When fade-out finishes, trigger the onComplete function
-    fadeOutGroup:SetScript("OnFinished", function()
-        if onComplete then
-            onComplete()  -- Switch the text after fade-out
-        end
-    end)
-
-    return fadeOutGroup
-end
-
--- Create an AnimationGroup for fade-in
-local function CreateFadeInAnimation(fontString)
-    -- Create the animation group for the fade-in
-    local fadeInGroup = fontString:CreateAnimationGroup()
-
-    -- Define the fade-in alpha animation
-    local fadeIn = fadeInGroup:CreateAnimation("Alpha")
-    fadeIn:SetFromAlpha(0)  -- Start fully invisible
-    fadeIn:SetToAlpha(1)    -- Fade to fully visible
-    fadeIn:SetDuration(1.5) -- Time to fade in
-    fadeIn:SetSmoothing("IN_OUT") -- Smooth transition
-
-    return fadeInGroup
-end
-
--- Custom SetText with fade transition
-function frames:FadeSetText(fontString, newText)
-    -- Create fade-out group if it doesn't exist
-    if not fontString.fadeOutGroup then
-        fontString.fadeOutGroup = CreateFadeOutAnimation(fontString, function()
-            -- After fade-out, change the text, but keep it invisible
-            fontString:SetText(newText)
-            fontString:SetAlpha(0)  -- Ensure the new text is invisible
-            fontString.fadeInGroup:Play()  -- Start the fade-in animation
-        end)
+local tblFade = {}
+function frames:CreateFadeAnimation(fontString, newText)
+    -- Check if fadeOutGroup exists; if not, create it
+    local fadeOutGroup = tblFade[fontString] and tblFade[fontString].fadeOutGroup
+    if not fadeOutGroup then
+        fadeOutGroup = fontString:CreateAnimationGroup()
+        local fadeOut = fadeOutGroup:CreateAnimation('Alpha')
+        fadeOut:SetFromAlpha(1)  -- Start fully visible
+        fadeOut:SetToAlpha(0)    -- End fully invisible
+        fadeOut:SetDuration(0.5)
+        fadeOut:SetSmoothing("OUT")
+        tblFade[fontString] = { fadeOutGroup = fadeOutGroup }
     end
 
-    -- Create fade-in group if it doesn't exist
-    if not fontString.fadeInGroup then
-        fontString.fadeInGroup = CreateFadeInAnimation(fontString)
+    -- Check if fadeInGroup exists; if not, create it
+    local fadeInGroup = tblFade[fontString] and tblFade[fontString].fadeInGroup
+    if not fadeInGroup then
+        fadeInGroup = fontString:CreateAnimationGroup()
+        local fadeIn = fadeInGroup:CreateAnimation('Alpha')
+        fadeIn:SetFromAlpha(0)  -- Start fully invisible
+        fadeIn:SetToAlpha(1)    -- Fade to fully visible
+        fadeIn:SetDuration(0.5)
+        fadeIn:SetSmoothing("IN")
+        tblFade[fontString] = { fadeInGroup = fadeInGroup }
     end
 
-    -- Stop any running animations
-    fontString.fadeOutGroup:Stop()
-    fontString.fadeInGroup:Stop()
+    -- When the fade-out finishes, change the text and start fade-in
+    fadeOutGroup:SetScript('OnFinished', function()
+        fontString:SetText(newText)  -- Ensure the text is updated here
+        fadeOutGroup:Stop()
+        fadeInGroup:Play()           -- Start the fade-in animation
+    end)
 
-    -- Play the fade-out animation first
-    fontString.fadeOutGroup:Play()
+    -- Immediately trigger fade-out and fade-in for the new text
+    fadeOutGroup:Play()
 end
-
--- Usage Example:
--- Assuming "MyFontString" is a valid FontString you want to fade in/out
---FadeSetText(MyFontString, "New Text Here")

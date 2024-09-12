@@ -71,8 +71,9 @@ function base:CreateFirstRowFrame() --* Frame and group comp, lock and close
     bLock:SetNormalTexture(base.isMoveLocked and locked or unlocked)
     --bLock:SetPushedTexture(ns.frames.BUTTON_LOCKED)
     bLock:SetHighlightTexture(unlocked)
-    bLock:SetScript('OnClick', function()
+    bLock:SetScript('OnClick', function(self)
         base.isMoveLocked = not base.isMoveLocked
+        tblFrame.tFrame:EnableMouse(base.isMoveLocked)
         bLock:SetNormalTexture(base.isMoveLocked and locked or unlocked)
         --bLock:SetPushedTexture(base.isMoveLocked and ns.frames.BUTTON_UNLOCKED or ns.frames.BUTTON_LOCKED)
         bLock:SetHighlightTexture(base.isMoveLocked and unlocked or locked)
@@ -88,38 +89,17 @@ function base:CreateFirstRowFrame() --* Frame and group comp, lock and close
 
     local txt = t:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
     txt:SetText('Group Lead Helper')
+    txt:SetTextColor(1, 1, 1, 1)
     txt:SetPoint('LEFT', 7, 0)
     tblFrame.tText = txt
 
-    local fadeOutGroup = txt:CreateAnimationGroup()
-    local fadeOut = fadeOutGroup:CreateAnimation('Alpha')
-    fadeOut:SetFromAlpha(1)  -- Start fully visible
-    fadeOut:SetToAlpha(0)    -- End fully invisible
-    fadeOut:SetDuration(2)
-    fadeOut:SetSmoothing("OUT")
-
-    local fadeInGroup = txt:CreateAnimationGroup()
-    local fadeIn = fadeInGroup:CreateAnimation('Alpha')
-    fadeIn:SetFromAlpha(0)  -- Start fully visible
-    fadeIn:SetToAlpha(1)    -- End fully invisible
-    fadeIn:SetDuration(2)
-    fadeIn:SetSmoothing("IN")
-
-    fadeOutGroup:SetScript('OnFinished', function() fadeInGroup:Play() end)
-
-    local originalSettext = txt.SetText
-    function txt:SetText(text, skipFade)
+    function ns.groupComp(text)
         if not text or text == '' then
-            originalSettext(self, 'Group Lead Helper '..ns.versionOut)
+            ns.frames:CreateFadeAnimation(txt, ns.groupType..': |A:UI-Frame-DpsIcon:20:20|a')
             return
-        else originalSettext(self, text) end
-
-        if skipFade then return end
-        fadeOutGroup:Stop()
-        fadeOutGroup:Play()
+        else ns.frames:CreateFadeAnimation(txt, text) end
     end
-    ns.groupComp = txt
-    ns.groupComp:SetText()
+    ns.groupComp()
 end
 function base:CreateSecondRowFrame()
     local f = ns.frames:CreateFrame('GLH_Base_SecondRow', tblFrame.frame)
@@ -130,25 +110,34 @@ function base:CreateSecondRowFrame()
     --* Difficulty Text
     local txt = f:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
     txt:SetText('')
-    txt:SetPoint('LEFT', 7, 0)
-    tblFrame.tText = txt
+    txt:SetTextColor(1, 1, 1, 1)
+    txt:SetPoint('LEFT', 6, 0)
 
-    ns.frames:FadeSetText(txt, 'Difficulty: Normal')
-
-    ns.difficulty = txt
-    ns.difficulty:SetText()
+    function ns.difficulty(text)
+        if not text or text == '' then
+            ns.frames:CreateFadeAnimation(txt, 'Difficulty: '..ns.code:cText('FFFF0000', 'Unknown'))
+            return
+        else ns.frames:CreateFadeAnimation(txt, text) end
+    end
+    ns.difficulty()
 
     --* Instance Text
+    local txt2 = f:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+    txt2:SetText('')
+    txt2:SetTextColor(1, 1, 1, 1)
+    txt2:SetJustifyH('RIGHT')
+    txt2:SetPoint('RIGHT', -6, 0)
+    txt2:SetWidth(f/2)
+    txt2:SetWordWrap(false)
+
+    function ns.instance(text)
+        if not text or text == '' then
+            ns.frames:CreateFadeAnimation(txt2, 'Instance: '..ns.code:cText('FFFF0000', 'Unknown'))
+            return
+        else ns.frames:CreateFadeAnimation(txt2, text) end
+    end
+    ns.instance()
     
-
-    --ns.instance = txt2
-    --ns.instance:SetText('Raid: Castle Nathria')
-
-    C_Timer.After(12, function()
-        print('Setting text')
-        ns.frames:FadeSetText(ns.difficulty, 'Difficulty: Mythic')
-        --ns.instance:SetText('Raid: Sanctum of Domination2')
-    end)
 end
 base:Init()
 
