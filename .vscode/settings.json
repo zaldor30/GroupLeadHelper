@@ -33,5 +33,6 @@
         "NUM_CHAT_WINDOWS",
         "ChatEdit_GetActiveWindow",
         "DEFAULT",
+        "GameTooltip_SetDefaultAnchor"
     ]
 }

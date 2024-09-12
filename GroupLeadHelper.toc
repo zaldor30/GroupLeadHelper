@@ -1,12 +1,12 @@
-## X-Curse-Project-ID: 882061
-## X-Website: https://www.curseforge.com/wow/addons/guild-recruiter
+# X-Curse-Project-ID: 882061
+# X-Website: https://www.curseforge.com/wow/addons/guild-recruiter
 
 ## Interface: 110002
 ## Title: Group Lead Helper
 ## Version: 1.0.0
 ## Notes: Easy track important information about your group members.
 ## Author: Moonfury
-## SavedVariables: RaidLeadHelperDB
+## SavedVariables: GroupLeadHelperDB
 ## IconTexture: Interface\AddOns\GroupLeadHelper\Images\GLH_Icon
 ## OptionalDeps: Ace3
 
@@ -32,3 +32,9 @@ Libs\LibDeflate\LibDeflate.lua
 locales\Locales.xml
 
 GLH_Init.lua
+GLH_Core.lua
+
+Code\GLH_Code.lua
+Code\GLH_Frame.lua
+
+Screens\GLH_Base.lua
