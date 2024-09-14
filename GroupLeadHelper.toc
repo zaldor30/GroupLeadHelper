@@ -32,9 +32,12 @@ Libs\LibDeflate\LibDeflate.lua
 locales\Locales.xml
 
 GLH_Init.lua
+GLH_Vars.lua
 GLH_Core.lua
 
 Code\GLH_Code.lua
 Code\GLH_Frame.lua
+Code\GLH_Dataset.lua
 
 Screens\GLH_Base.lua
+Screens\GLH_BuffIcons.lua

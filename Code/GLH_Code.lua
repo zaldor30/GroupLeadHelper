@@ -58,6 +58,28 @@ function code:createTooltip(text, body, force, frame)
     GameTooltip:Show()
 end
 
+--* GROUP_ROSTER_UPDATE Routines
+function code:GetGroupRoles()
+    local partyType = strlower(ns.groupType)
+    local tank, healer, dps, unknown, tblTanks, tblHealers = 0, 0, 0, 0, {}, {}
+
+    for i=1,GetNumGroupMembers() do
+        local partyID = (partyType:match('party') and i == 1) and 'player' or partyType..(partyType:match('party') and i - 1 or i)
+        local role = UnitGroupRolesAssigned(partyID)
+
+        if role == 'TANK' then
+            tank = tank + 1
+            tinsert(tblTanks, { GetRaidRosterInfo(i) })
+        elseif role == 'HEALER' then
+            healer = healer + 1
+            tinsert(tblHealers, { GetRaidRosterInfo(i) })
+        elseif role == 'DAMAGER' then dps = dps + 1
+        else unknown = unknown + 1 end
+    end
+
+    return tank, healer, dps, unknown, tblTanks, tblHealers
+end
+
 --* Observer Functions
 function observer:Init()
     self.tblObservers = {}

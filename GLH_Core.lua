@@ -5,70 +5,40 @@ local L = LibStub("AceLocale-3.0"):GetLocale('GroupLeadHelper')
 local Icon, ADB = LibStub('LibDBIcon-1.0'), LibStub('AceDB-3.0')
 local ACR = LibStub("AceConfigRegistry-3.0")
 
---* Namespace Globals
-ns.version, ns.dbVersion = GLH.version, '1.0'
-ns.isTesting = false
-ns.isPreRelease = true
-ns.preReleaseType = 'Pre-Alpha'
-ns.versionOut = '(v'..ns.version..(ns.isPreRelease and ' '..ns.preReleaseType or '')..')'
-
-ns.debug = false
-ns.commPrefix = 'GLHSync'
-C_ChatInfo.RegisterAddonMessagePrefix(ns.commPrefix)
-
--- Color Globals
-ns.GLHColor = 'FF00FFFF'
-
--- Icon Globals
-ns.ICON_PATH = GLH.ICON_PATH
-ns.icon = ns.ICON_PATH..'GLH_Icon.tga'
-
--- Role Icons
-ns.DPS_LFR_ICON = 'UI-Frame-DpsIcon' -- Atlas 31x30
-ns.TANK_LFR_ICON = 'UI-Frame-TankIcon' -- Atlas 31x30
-ns.HEALER_LFR_ICON = 'UI-Frame-HealerIcon' -- Atlas 31x30
-
--- Highlgiht Images
-ns.BLUE_HIGHLIGHT = 'bags-glow-heirloom'
-ns.BLUE_LONG_HIGHLIGHT = 'communitiesfinder_card_highlight'
-
--- Font Globals
-ns.ARIAL_FONT = 'Fonts\\ARIAN.ttf'
-ns.SKURRI_FONT = 'Fonts\\SKURRI.ttf'
-ns.DEFAULT_FONT = 'Fonts\\FRIZQT__.ttf'
-ns.MORPHEUS_FONT = 'Fonts\\MORPHEUS.ttf'
-ns.DEFAULT_FONT_SIZE = 12
-
 ns.core = {}
 local core = ns.core
 
 local function groupRosterUpdate(...) -- For use in startup and GROUP_ROSTER_UPDATE event
     local oldGroupType = ns.groupType
-    local msg = L['GLH_INACTIVE']
-    if IsInGroup() and not ns.p.alwaysShow and not UnitIsGroupLeader('player') and not UnitIsGroupAssistant('player') then
-        msg = L['GLH_INACTIVE_NOT_LEADER']
+    if not IsInGroup() or (IsInGroup() and not ns.p.alwaysShow and
+        not UnitIsGroupLeader('player') and not UnitIsGroupAssistant('player')) then
+        -- Show Messages
+        if IsInGroup() then ns.code:cOut(L['GLH_INACTIVE_NOT_LEADER'], 'FFFF9100', true)
+        elseif (not ns.groupType and oldGroupType) or (not oldGroupType and ns.groupType) then
+            ns.code:cOut(L['GLH_INACTIVE'], 'FFFF9100', true) end
+
+        ns.groupType = nil
+
+        ns.observer:Notify('FULL_SHUTDOWN')
+        GLH:UnregisterAllEvents()
+        GLH:UnregisterEvent('GROUP_ROSTER_UPDATE')
+        GLH:RegisterEvent('GROUP_JOINED', groupRosterUpdate)
     elseif IsInGroup() then
         ns.groupType = IsInRaid() and 'Raid' or 'Party'
-        msg = L['GLH_ACTIVE']..' '..ns.groupType
-    else ns.groupType = nil end
+        if (not ns.groupType and oldGroupType) or (not oldGroupType and ns.groupType) then
+            ns.code:cOut(L['GLH_ACTIVE']..' '..ns.groupType, 'FFFF9100', true) end
 
-    ns.observer:Notify('GROUP_ROSTER_UPDATE', (ns.groupType or false))
+        oldGroupType = ns.groupType
+        GLH:UnregisterEvent('GROUP_JOINED')
+        GLH:RegisterEvent('GROUP_ROSTER_UPDATE', groupRosterUpdate)
+        ns.observer:Notify('GROUP_ROSTER_UPDATE', (ns.groupType or false))
+
+        ns.base:SetShown(true)
+    end
 
     -- Don't show message if group type has not changed
 
     --? Could do a chat maessage watch for 'joins the party.'
-    if (not ns.groupType and oldGroupType) or (not oldGroupType and ns.groupType) then
-        ns.code:cOut(msg, 'FFFF9100', true)
-
-        if oldGroupType then -- Was in group
-            GLH:UnregisterEvent('GROUP_ROSTER_UPDATE')
-            GLH:RegisterEvent('GROUP_JOINED', groupRosterUpdate)
-        elseif not oldGroupType then -- Joined a group
-            if ns.p.alwaysShow and not ns.base:IsShown() then ns.base:SetShown(true) end
-            GLH:UnregisterEvent('GROUP_JOINED')
-            GLH:RegisterEvent('GROUP_ROSTER_UPDATE', groupRosterUpdate)
-        end
-    end
 end
 
 function GLH:OnInitialize() --* Called when the addon is loaded
@@ -98,6 +68,7 @@ function core:Init()
         },
         global = {
             showWhatsNew = true,
+            showTooltips = true,
         }
     }
 end
@@ -122,7 +93,7 @@ function core:StartMiniMapIcon() -- Start Mini Map Icon
         type = 'data source',
         icon = ns.icon,
         OnClick = function(_, button)
-            if button == 'LeftButton' and IsShiftKeyDown() and not ns.base:IsShown() then ns.base:SetShown(true)
+            if button == 'LeftButton' and ns.base:IsShown() then ns.base:SetShown(false)
             elseif button == 'LeftButton' and not ns.base:IsShown() then ns.base:SetShown(true)
             elseif button == 'RightButton' then Settings.OpenToCategory('Guild Recruiter') end
         end,
