@@ -23,6 +23,9 @@ ns.DPS_LFR_ICON = 'UI-Frame-DpsIcon' -- Atlas 31x30
 ns.TANK_LFR_ICON = 'UI-Frame-TankIcon' -- Atlas 31x30
 ns.HEALER_LFR_ICON = 'UI-Frame-HealerIcon' -- Atlas 31x30
 
+ns.RED_CHECK = 'GM-raidMarker2'
+ns.GREEN_CHECK = 'Capacitance-General-WorkOrderCheckmark'
+
 -- Highlgiht Images
 ns.BLUE_HIGHLIGHT = 'bags-glow-heirloom'
 ns.BLUE_LONG_HIGHLIGHT = 'communitiesfinder_card_highlight'

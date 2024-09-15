@@ -23,10 +23,12 @@ local function eventGroupRosterUpdate(inGroup)
     base:UpdateGroupComp()
     base:UpdateDifficulty()
     base:UpdateInstanceInfo()
+
+    tblFrame.groupLeader:SetText(base:CreateGroupLeadTooltip())
 end
 local function eventFullShutdown()
     ns.observer:Notify('FULL_SHUTDOWN')
-    ns.observer:Unregister('GROUP_ROSTER_UPDATE', eventGroupRosterUpdate)
+    ns.observer:UnregisterAll()
 end
 local function eventCloseScreens()
     ns.observer:Unregister('CLOSE_SCREENS', eventCloseScreens)
@@ -54,15 +56,19 @@ function base:SetShown(val)
     if not tblFrame.frame then
         self:CreateFirstRowFrame()
         self:CreateSecondRowFrame()
+        self:CreateBottomRowFrame()
+        gBase.tblBase = tblFrame
     end
 
-    eventGroupRosterUpdate()
     tblFrame.frame:SetShown(val)
+    ns.buffIcons:SetShown(true)
+
+    eventGroupRosterUpdate()
 end
 function base:CreateFirstRowFrame() --* Frame and group comp, lock and close
     --* Create the main frame
     local f = ns.frames:CreateFrame('GLH_Base_Frame', UIParent, true)
-    f:SetSize(350, 150)
+    f:SetSize(300, 150)
     f:SetPoint(self.screenPos.point, self.screenPos.x, self.screenPos.y)
     f:SetClampedToScreen(true)
     f:SetMovable(true)
@@ -122,24 +128,50 @@ function base:CreateSecondRowFrame()
     f:SetPoint('TOPLEFT', tblFrame.tFrame, 'BOTTOMLEFT', 3, 0)
     f:SetPoint('RIGHT', tblFrame.close, 'RIGHT', -5, 0)
     f:SetHeight(20)
+    tblFrame.secondRow = f
+
+    local b = ns.frames:CreateFrame('GLH_Base_Invite', f, false, nil, 'Button')
+    b:SetPoint('LEFT', 0, 0)
+    b:SetSize(f:GetWidth()/1.6, 20)
+    b:SetHighlightTexture(ns.BLUE_LONG_HIGHLIGHT)
+
+    --* Group Leader Text
+    local txt1 = b:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+    txt1:SetText('Leader: ')
+    txt1:SetTextColor(1, 1, 1, 1)
+    txt1:SetJustifyH('LEFT')
+    txt1:SetPoint('LEFT', 0, 0)
+    txt1:SetPoint('RIGHT', 0, 0)
+    txt1:SetWordWrap(false)
+    tblFrame.groupLeader = txt1
+    txt1:SetText(base:CreateGroupLeadTooltip())
 
     --* Difficulty Text
-    local txt = f:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
-    txt:SetText('')
-    txt:SetTextColor(1, 1, 1, 1)
-    txt:SetPoint('LEFT', 6, 0)
-    tblFrame.difficulty = txt
-
-    --* Instance Text
     local txt2 = f:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
     txt2:SetText('')
     txt2:SetTextColor(1, 1, 1, 1)
-    txt2:SetJustifyH('RIGHT')
-    txt2:SetPoint('RIGHT', -6, 0)
-    txt2:SetWidth(f:GetWidth()/2)
-    txt2:SetWordWrap(false)
-    tblFrame.instance = txt2
+    txt2:SetPoint('RIGHT', -3, 0)
+    tblFrame.difficulty = txt2
 
+    b:SetScript('OnEnter', function() base:CreateGroupLeadTooltip() end)
+    b:SetScript('OnLeave', function() GameTooltip:Hide() end)
+end
+function base:CreateBottomRowFrame()
+    local f = ns.frames:CreateFrame('GLH_Base_thirdRow', tblFrame.frame)
+    f:SetPoint('BOTTOMLEFT', tblFrame.tFrame, 'BOTTOMLEFT', 3, 0)
+    f:SetPoint('RIGHT', tblFrame.close, 'RIGHT', -5, 0)
+    f:SetHeight(20)
+    tblFrame.thirdRow = f
+
+    --* Instance Text
+    local txt1 = f:CreateFontString(nil, 'OVERLAY', 'GameFontNormal')
+    txt1:SetText('')
+    txt1:SetTextColor(1, 1, 1, 1)
+    txt1:SetJustifyH('LEFT')
+    txt1:SetPoint('LEFT', 0, 0)
+    txt1:SetWidth(f:GetWidth()/2)
+    txt1:SetWordWrap(false)
+    tblFrame.instance = txt1
 end
 
 --* Update for Row 1
@@ -257,7 +289,45 @@ function base:CreateGroupCompTooltip()
 
     ns.code:createTooltip(title, body, 'FORCE_TOOLTIP')
 end
+function base:CreateGroupLeadTooltip()
+    local gLead = ''
+    local title, body = 'Group Leader', '\n \nAssistants:\n'
+
+    if IsInRaid() then
+        for i=1, GetNumGroupMembers() do
+            local unit, rank = GetRaidRosterInfo(i)
+            if not unit then unit = UnitName('player') end
+
+            local connected = UnitIsConnected(unit)
+            if rank == 1 then
+                body = '\n'..body..(not connected and '<offline> ' or '')..ns.code:cPlayer(unit, UnitClassBase(unit))
+            elseif rank == 2 then
+                body = 'Leader: '..(not connected and '<offline> ' or '')..ns.code:cPlayer(unit, UnitClassBase(unit))..body
+                gLead = 'Leader: '..ns.code:cPlayer(unit, UnitClassBase(unit))..(not connected and ' <offline>' or '')
+            end
+        end
+    else
+        for i=1, GetNumGroupMembers() do
+            local unit = GetRaidRosterInfo(i)
+            if not unit then unit = UnitName('player') end
+
+            if UnitIsGroupLeader(unit) then
+                local connected = UnitIsConnected(unit)
+                body = body..(not connected and '<offline> ' or '')..ns.code:cPlayer(unit, UnitClassBase(unit))
+                gLead = gLead..ns.code:cPlayer(unit, UnitClassBase(unit))..(not connected and ' <offline>' or '')
+                break
+            end
+        end
+    end
+
+    ns.code:createTooltip(title, body, 'FORCE_TOOLTIP')
+    return gLead
+end
 base:Init()
 
+function gBase:Init()
+    self.tblBase = {}
+end
 function gBase:IsShown() return tblFrame.frame and tblFrame.frame:IsShown() or false end
 function gBase:SetShown(val) base:SetShown(val) end
+gBase:Init()

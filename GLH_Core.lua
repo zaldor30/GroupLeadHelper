@@ -28,10 +28,19 @@ local function groupRosterUpdate(...) -- For use in startup and GROUP_ROSTER_UPD
         if (not ns.groupType and oldGroupType) or (not oldGroupType and ns.groupType) then
             ns.code:cOut(L['GLH_ACTIVE']..' '..ns.groupType, 'FFFF9100', true) end
 
+        local function eventCombatLog()
+            local _, event = CombatLogGetCurrentEventInfo()
+            if event:match('SPELL_AURA') then
+                ns.observer:Notify('SPELL_AURA', CombatLogGetCurrentEventInfo())
+            end
+            --ns.observer:Notify('SPELL_AURA_REFRESH', ...)
+        end
+
         oldGroupType = ns.groupType
         GLH:UnregisterEvent('GROUP_JOINED')
         GLH:RegisterEvent('GROUP_ROSTER_UPDATE', groupRosterUpdate)
         ns.observer:Notify('GROUP_ROSTER_UPDATE', (ns.groupType or false))
+        GLH:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED', eventCombatLog)
 
         ns.base:SetShown(true)
     end
@@ -56,7 +65,7 @@ function GLH:OnInitialize() --* Called when the addon is loaded
 
     GLH:RegisterEvent('ADDON_LOADED', startGLH)
 end
---/inv holycynic-dalaran
+
 --* GLH Core Functions
 function core:Init()
     self.dbDefaults = {

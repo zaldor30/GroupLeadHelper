@@ -44,9 +44,28 @@ function code:cPlayer(name, class, color) -- Colorize player names
     else return end
 end
 
+--* Local Wordwrap
+function code:wordWrap(inputString, maxLineLength)
+    local lines = {}
+    local currentLine = ""
+
+    maxLineLength = maxLineLength or 50
+    for word in inputString:gmatch("%S+") do
+        if #currentLine + #word <= maxLineLength then
+            currentLine = currentLine .. " " .. word
+        else
+            table.insert(lines, currentLine)
+            currentLine = word
+        end
+    end
+
+    table.insert(lines, currentLine)
+    return table.concat(lines, "\n")
+end
+
 -- *Tooltip Routine
 function code:createTooltip(text, body, force, frame)
-    if not force and not ns.gSettings.showToolTips then return end
+    if not force and not ns.g.showTooltips then return end
     local uiScale, x, y = UIParent:GetEffectiveScale(), GetCursorPosition()
     if frame then uiScale, x, y = 0, 0, 0 end
     CreateFrame("GameTooltip", nil, nil, "GameTooltipTemplate")
@@ -78,6 +97,40 @@ function code:GetGroupRoles()
     end
 
     return tank, healer, dps, unknown, tblTanks, tblHealers
+end
+
+--* Data Routines
+function code:sortTableByField(tbl, sortField, reverse, showit)
+    if not tbl then return end
+
+    local keyArray = {}
+    for key, rec in pairs(tbl) do
+        if type(key) == 'string' then
+            if sortField then rec.key = key
+            elseif not sortField then rec = key end
+
+            table.insert(keyArray, rec and rec or tbl[key])
+        end
+    end
+
+    local sortFunc = nil
+    reverse = reverse or false
+    if not sortField then
+        sortFunc = function(a, b)
+            if reverse then return a < b
+            else return a > b end
+        end
+    else
+        sortFunc = function(a, b)
+            if a[sortField] and b[sortField] then
+                if reverse then return a[sortField] > b[sortField]
+                else return a[sortField] < b[sortField] end
+            end
+        end
+    end
+
+    table.sort(keyArray, sortFunc)
+    return keyArray
 end
 
 --* Observer Functions
