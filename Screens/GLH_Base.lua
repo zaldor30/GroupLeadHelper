@@ -94,7 +94,7 @@ function base:CreateFirstRowFrame() --* Frame and group comp, lock and close
 
     local bLock = ns.frames:CreateFrame('GLH_Base_Lock', f, false, nil, 'Button')
     bLock:SetSize(20, 20)
-    bLock:SetPoint('RIGHT', b, 'LEFT', 0, 0)
+    bLock:SetPoint('RIGHT', b, 'LEFT', 3, 0)
     bLock:SetNormalTexture(base.isMoveLocked and locked or unlocked)
     --bLock:SetPushedTexture(ns.frames.BUTTON_LOCKED)
     bLock:SetHighlightTexture(unlocked)
@@ -125,8 +125,8 @@ function base:CreateFirstRowFrame() --* Frame and group comp, lock and close
 end
 function base:CreateSecondRowFrame()
     local f = ns.frames:CreateFrame('GLH_Base_SecondRow', tblFrame.frame)
-    f:SetPoint('TOPLEFT', tblFrame.tFrame, 'BOTTOMLEFT', 3, 0)
-    f:SetPoint('RIGHT', tblFrame.close, 'RIGHT', -5, 0)
+    f:SetPoint('TOPLEFT', tblFrame.tFrame, 'BOTTOMLEFT', 3, 2)
+    f:SetPoint('RIGHT', tblFrame.close, 'RIGHT', -3, 2)
     f:SetHeight(20)
     tblFrame.secondRow = f
 
@@ -291,7 +291,7 @@ function base:CreateGroupCompTooltip()
 end
 function base:CreateGroupLeadTooltip()
     local gLead = ''
-    local title, body = 'Group Leader', '\n \nAssistants:\n'
+    local title, body = ns.groupType..' Leader', '\n \nAssistants:\n'
 
     if IsInRaid() then
         for i=1, GetNumGroupMembers() do
@@ -313,8 +313,8 @@ function base:CreateGroupLeadTooltip()
 
             if UnitIsGroupLeader(unit) then
                 local connected = UnitIsConnected(unit)
-                body = body..(not connected and '<offline> ' or '')..ns.code:cPlayer(unit, UnitClassBase(unit))
-                gLead = gLead..ns.code:cPlayer(unit, UnitClassBase(unit))..(not connected and ' <offline>' or '')
+                body = 'Leader: '..(not connected and '<offline> ' or '')..ns.code:cPlayer(unit, UnitClassBase(unit))
+                gLead = 'Leader: '..ns.code:cPlayer(unit, UnitClassBase(unit))..(not connected and ' <offline>' or '')
                 break
             end
         end

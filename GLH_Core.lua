@@ -93,10 +93,10 @@ function core:StartGroupLeadHelper() --* Start the Group Lead Helper
     groupRosterUpdate()
 end
 function core:StartDatabase() --* Start the database
-    self.db = ADB:New('GroupLeadHelperDB', self.dbDefaults, true)
+    self.db = ADB:New('GroupLeadHelperDB', self.dbDefaults)
     ns.p, ns.g = self.db.profile, self.db.global
 end
-function core:StartMiniMapIcon() -- Start Mini Map Icon
+function core:StartMiniMapIcon() --* Start Mini Map Icon
     local code = ns.code
     local iconData = LibStub("LibDataBroker-1.1"):NewDataObject("GLH_Icon", { -- Minimap Icon Settings
         type = 'data source',
@@ -118,7 +118,7 @@ function core:StartMiniMapIcon() -- Start Mini Map Icon
     Icon:Register('GLH_Icon', iconData, ns.p.minimap)
     self.minimapIcon = Icon
 end
-function core:StartSlashCommands() -- Start Slash Commands
+function core:StartSlashCommands() --* Start Slash Commands
     local function slashCommand(msg)
         msg = strlower(msg:trim())
 
