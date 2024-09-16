@@ -1,8 +1,8 @@
 local _, ns = ... -- Namespace (myaddon, namespace)
 local L = LibStub("AceLocale-3.0"):GetLocale('GroupLeadHelper')
 
-ns.code, ns.observer = {}, {}
-local code, observer = ns.code, ns.observer
+ns.code, ns.obs = {}, {}
+local code, obs = ns.code, ns.obs
 
 --* Console print routines
 function code:consolePrint(msg, color, noPrefix)
@@ -79,6 +79,8 @@ end
 
 --* GROUP_ROSTER_UPDATE Routines
 function code:GetGroupRoles()
+    if not ns.groupType then return end
+
     local partyType = strlower(ns.groupType)
     local tank, healer, dps, unknown, tblTanks, tblHealers = 0, 0, 0, 0, {}, {}
 
@@ -133,38 +135,38 @@ function code:sortTableByField(tbl, sortField, reverse, showit)
     return keyArray
 end
 
---* Observer Functions
-function observer:Init()
-    self.tblObservers = {}
+--* notify Functions
+function obs:Init()
+    self.notify = {}
 end
-function observer:Register(event, callback)
+function obs:Register(event, callback)
     if not event or not callback then return end
 
-    if not self.tblObservers[event] then self.tblObservers[event] = {} end
-    table.insert(self.tblObservers[event], callback)
+    if not self.notify[event] then self.notify[event] = {} end
+    table.insert(self.notify[event], callback)
 end
-function observer:Unregister(event, callback)
+function obs:Unregister(event, callback)
     if not event or not callback then return end
-    if not self.tblObservers[event] then return end
-    for i=#self.tblObservers[event],1,-1 do
-        if self.tblObservers[event][i] == callback then
-            table.remove(self.tblObservers[event], i)
+    if not self.notify[event] then return end
+    for i=#self.notify[event],1,-1 do
+        if self.notify[event][i] == callback then
+            table.remove(self.notify[event], i)
         end
     end
 end
-function observer:UnregisterAll(event)
+function obs:UnregisterAll(event)
     if not event then return end
-    if not self.tblObservers[event] then return end
-    for i=#self.tblObservers[event],1,-1 do
-        table.remove(self.tblObservers[event], i)
+    if not self.notify[event] then return end
+    for i=#self.notify[event],1,-1 do
+        table.remove(self.notify[event], i)
     end
 end
-function observer:Notify(event, ...)
-    if not event or not self.tblObservers[event] then return end
+function obs:Notify(event, ...)
+    if not event or not self.notify[event] then return end
 
-    for i=1,#self.tblObservers[event] do
-        if self.tblObservers[event][i] then
-            self.tblObservers[event][i](...) end
+    for i=1,#self.notify[event] do
+        if self.notify[event][i] then
+            self.notify[event][i](...) end
     end
 end
-observer:Init()
+obs:Init()
