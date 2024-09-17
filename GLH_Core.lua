@@ -8,8 +8,13 @@ local ACR = LibStub("AceConfigRegistry-3.0")
 ns.core = {}
 local core = ns.core
 
+ns.leader, ns.assistants = nil, {}
+ns.groupOut, ns.groupType = nil, nil
+
 --* GLH Core Functions
 function core:Init()
+    ns.tblCLEU = {}
+
     self.dbDefaults = {
         profile = {
             debugMode = false,
@@ -76,59 +81,75 @@ function core:StartSlashCommands() --* Start Slash Commands
     GLH:RegisterChatCommand('glh', slashCommand)
 end
 
---* Event Routines
-
---? End of Event Routines
 --* Event Monitoring
-function core:StartEventMonitoring()
-    local function eventGroupJoined()
-        local function eventGroupLeft()
-            ns.groupType = nil
-            ns.groupOut = nil
-            ns.leader, ns.assistants = nil, {}
+local lastRefresh = nil
+function core:Refresh()
+    if lastRefresh and GetTime() - lastRefresh < 1 then return end
 
-            GLH:UnregisterAllEvents()
-            self:StartEventMonitoring()
+    lastRefresh = time()
+    ns.code:fOut('Refreshing Group Lead Helper...', ns.GLHColor, true)
+    self:StartEventMonitoring(true)
+    C_Timer.After(1, function() ns.code:fOut('Group Lead Helper Refreshed.', ns.GLHColor, true) end)
+end --* Refresh the group information
+function core:StartEventMonitoring(refresh)
+    local function eventCombatLog()
+        local _, event, _, sGUID = CombatLogGetCurrentEventInfo()
+        if (ns.tblCLEU[event] or event:match('SPELL_AURA')) and sGUID:sub(1,6) == 'Player' then
+            ns.obs:Notify('COMBAT_LOG_EVENT_UNFILTERED', CombatLogGetCurrentEventInfo()) end
+    end
+    local function eventGroupRosterUpdate()
+        ns.groupOut = IsInRaid() and L['RAID'] or (IsInGroup() and L['PARTY'] or nil)
+        ns.groupType = IsInRaid() and 'RAID' or (IsInGroup() and 'PARTY' or nil)
+        if not ns.groupType then return end
 
-            ns.base:SetShown(false)
-        end
-        local function eventCombatLog()
-            local _, event, _, sGUID = CombatLogGetCurrentEventInfo()
-            if (ns.tblCLEU[event] or event:match('SPELL_AURA')) and sGUID:sub(1,6) == 'Player' then
-                ns.obs:Notify('COMBAT_LOG_EVENT_UNFILTERED', CombatLogGetCurrentEventInfo()) end
-        end
-        local function eventGroupRosterUpdate()
-            ns.groupType = IsInRaid() and 'RAID' or IsInGroup() and 'PARTY' or nil
-            ns.groupOut = ns.groupType and ns.groupType:sub(1,1):upper()..ns.groupType:sub(2):lower() or ''
-
-            ns.leader, ns.assistants = nil, {}
-            if IsInGroup() then
-                for i=1,GetNumGroupMembers() do
-                    local name, rank, _, _, _, _, _, _, _, _, class = GetRaidRosterInfo(i)
-                    if rank == 2 then
-                        ns.leader = class and ns.code:cPlayer(name, class) or name
-                        if not IsInRaid() then break end
-                    elseif rank == 1 then table.insert(ns.assistants, (class and ns.code:cPlayer(name, class) or name)) end
-                end
+        ns.leader, ns.assistants = {}, {}
+        if IsInGroup() then
+            for i=1,GetNumGroupMembers() do
+                local name, rank, _, _, _, class = GetRaidRosterInfo(i)
+                if rank == 2 then
+                    ns.leader = { name, class }
+                    if not IsInRaid() then break end
+                elseif rank == 1 then table.insert(ns.assistants, { name, class }) end
             end
-
-            ns.obs:Notify('GROUP_ROSTER_UPDATE')
         end
 
-        GLH:UnregisterAllEvents()
+        ns.obs:Notify('GROUP_ROSTER_UPDATE')
+    end
 
+    local eventGroupLeft = nil
+    local function eventGroupJoined()
         GLH:RegisterEvent('GROUP_LEFT', eventGroupLeft)
         GLH:RegisterEvent('GROUP_ROSTER_UPDATE', eventGroupRosterUpdate)
         GLH:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED', eventCombatLog)
+
+        eventGroupRosterUpdate()
+    end
+    eventGroupLeft = function()
+        if not self.isInGroup then return end
+
+        ns.groupType = nil
+        ns.groupOut = nil
+        ns.leader, ns.assistants = nil, {}
+
+        GLH:UnregisterAllEvents()
+        ns.obs:Notify('GROUP_LEFT')
+        ns.obs:UnregisterAll()
+
+        GLH:UnregisterAllEvents()
+        GLH:RegisterEvent('GROUP_JOINED', eventGroupJoined)
     end
 
-    if IsInGroup() and not ns.groupType then
+    if refresh then eventGroupRosterUpdate()
+    elseif IsInGroup() and not ns.groupType then
+        self.isInGroup = true
         eventGroupJoined()
+        if not ns.groupType then eventGroupLeft() return end
 
         if ns.base:IsShown() then return end
         ns.base:SetShown(true)
-    else GLH:RegisterEvent('GROUP_JOINED', eventGroupJoined) end
-end
+    elseif not IsInGroup() then eventGroupLeft() end
+end -- CLEU, Group Roster, Group Left, Group Joined
+--? End of ns.core
 
 function GLH:OnInitialize() --* Called when the addon is loaded
     local function startGLH()
@@ -164,10 +185,17 @@ ns.GLHColor = 'FF00FFFF'
 ns.ICON_PATH = GLH.ICON_PATH
 ns.icon = ns.ICON_PATH..'GLH_Icon.tga'
 
+-- Small Backdrop
+ns.HORDE_SMALL_BACKDROP = 'Campaign_Horde'
+ns.ALLIANCE_SMALL_BACKDROP = 'Campaign_Alliance'
+ns.HORDE_HEADER = 'Objective-Header-CampaignHorde'
+ns.ALLIANCE_HEADER = 'Objective-Header-CampaignAlliance'
+
 -- Role Icons
 ns.DPS_LFR_ICON = 'UI-Frame-DpsIcon' -- Atlas 31x30
 ns.TANK_LFR_ICON = 'UI-Frame-TankIcon' -- Atlas 31x30
 ns.HEALER_LFR_ICON = 'UI-Frame-HealerIcon' -- Atlas 31x30
+ns.UNKNOWN_LFR_ICON = 'legendaryactivequesticon'--'UI-Frame-GroupRoleIcon' -- Atlas 31x30
 
 ns.RED_CHECK = 'GM-raidMarker2'
 ns.GREEN_CHECK = 'Capacitance-General-WorkOrderCheckmark'
@@ -190,8 +218,39 @@ ns.RARE_COLOR = 'ff0070dd'
 ns.EPIC_COLOR = 'ffa335ee'
 ns.LEGENDARY_COLOR = 'ffff8000'
 
--- Dungeon Colors
-ns.LFR_DUNGEON_COLOR = 'ff9d9d9d'
-ns.NORMAL_DUNGEON_COLOR = 'ff0070dd'
-ns.HEROIC_DUNGEON_COLOR = 'ffa335ee'
-ns.MYTHIC_DUNGEON_COLOR = 'ffff8000'
+-- Frame Icons
+ns.MINIMIZE = '128-RedButton-Minus'
+ns.MINIMIZE_PRESSED = '128-RedButton-Minus-Pressed'
+ns.MINIMIZE_HIGHLIGHT = '128-RedButton-Minus-Highlight'
+ns.CLOSE = '128-RedButton-Exit'
+ns.CLOSE_PRESSED = '128-RedButton-Exit-Pressed'
+ns.CLOSE_HIGHLIGHT = '128-RedButton-Exit-Highlight'
+ns.REFRESH = '128-RedButton-Refresh'
+ns.REFRESH_PRESSED = '128-RedButton-Refresh-Pressed'
+ns.REFRESH_HIGHLIGHT = '128-RedButton-Refresh-Highlight'
+
+-- Backdrop Templates
+ns.DEFAULT_BORDER = 'Interface\\Tooltips\\UI-Tooltip-Border'
+ns.BLANK_BACKGROUND = 'Interface\\Buttons\\WHITE8x8'
+ns.DIALOGUE_BACKGROUND = 'Interface\\DialogFrame\\UI-DialogBox-Background'
+function ns.BackdropTemplate(bgImage, edgeImage, tile, tileSize, edgeSize, insets)
+	tile = tile == 'NO_TILE' and false or true
+
+	return {
+		bgFile = bgImage or ns.DIALOGUE_BACKGROUND,
+		edgeFile = edgeImage or ns.DEFAULT_BORDER,
+		tile = true,
+		tileSize = tileSize or 16,
+		edgeSize = edgeSize or 16,
+		insets = insets or { left = 3, right = 3, top = 3, bottom = 3 }
+	}
+end
+
+-- Frame Stratas
+ns.BACKGROUND_STRATA = 'BACKGROUND'
+ns.LOW_STRATA = 'LOW'
+ns.MEDIUM_STRATA = 'MEDIUM'
+ns.HIGH_STRATA = 'HIGH'
+ns.DIALOG_STRATA = 'DIALOG'
+ns.TOOLTIP_STRATA = 'TOOLTIP'
+ns.DEFAULT_STRATA = ns.BACKGROUND_STRATA

@@ -35,8 +35,9 @@ GLH_Init.lua
 GLH_Core.lua
 
 Shared\GLH_Code.lua
-#Code\GLH_Frame.lua
+Shared\GLH_Frames.lua
 #Code\GLH_Dataset.lua
 
-#Screens\GLH_Base.lua
+Screens\GLH_Base.lua
+Screens\GLH_GroupInfo.lua
 #Screens\GLH_BuffIcons.lua

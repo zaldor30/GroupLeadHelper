@@ -6,6 +6,10 @@ L['HELP'] = 'Help'
 L['CONFIG'] = 'Config'
 L['MINIMAP'] = 'Minimap'
 
+L['RAID'] = 'Raid'
+L['PARTY'] = 'Party'
+L['LEADER'] = 'Leader'
+
 L['MISSING_ADDON_1'] = 'GLH uses Details! therefore, Details! must be running.'
 L['MISSING_ADDON_2'] = 'Details! is not loaded.  Shutting down GLH.'
 
