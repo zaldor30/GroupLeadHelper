@@ -9,7 +9,7 @@ local function eventGroupRosterUpdate(refresh)
     if not IsInGroup() or not ns.groupType or not ns.groupOut then return end
 
     gi:UpdateGroupComposition(refresh)
-    if gi.oldLeader ~= ns.leader[1] or refresh then
+    if ns.leader and (gi.oldLeader ~= ns.leader[1] or refresh) then
         gi.oldLeader = ns.leader[1]
         local cName = UnitIsConnected(ns.leader[1]) and ns.code:cPlayer(ns.leader[1], ns.leader[2]) or ns.code:cPlayer(ns.leader[1], nil, 'FF808080')
         ns.frames:CreateFadeAnimation(gi.tblFrame.leaderText, (L['LEADER']..': '..cName))
@@ -55,8 +55,7 @@ function groupInfo:SetShown(val)
     gi:CreateBaseFrame()
     gi:UpdateGroupComposition()
 
-    if ns.leader[1] and ns.leader[1] ~= '' then
-        print(ns.leader[1])
+    if ns.leader and ns.leader[1] and ns.leader[1] ~= '' then
         gi.oldLeader = ns.leader[1]
         local cName = UnitIsConnected(ns.leader[1]) and ns.code:cPlayer(ns.leader[1], ns.leader[2]) or ns.code:cPlayer(ns.leader[1], nil, 'FF808080')
         ns.frames:CreateFadeAnimation(gi.tblFrame.leaderText, (L['LEADER']..': '..cName))

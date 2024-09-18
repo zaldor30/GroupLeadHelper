@@ -5,9 +5,27 @@ ns.iconBuffs = {}
 local iBuffs, gBuffs = {}, ns.iconBuffs
 
 local function eventGroupRosterUpdate(refresh)
-    if not IsInGroup() or not ns.groupType or not ns.groupOut then return end
+    if not refresh and not iBuffs.tblClasses then return
+    elseif not IsInGroup() or not ns.groupType or not ns.groupOut then return end
 
-    iBuffs:UpdateBuffIcons(refresh)
+    iBuffs.tblClasses = {}
+    local tblOld = iBuffs.tblClasses
+    for i=1, GetNumGroupMembers() do
+        local class = select(6, GetRaidRosterInfo(i))
+        iBuffs.tblClasses[class] = iBuffs.tblClasses[class] and iBuffs.tblClasses[class] + 1 or 1
+    end
+
+    local changed = false
+    if not refresh then
+        for k, v in pairs(iBuffs.tblClasses) do
+            if tblOld[k] ~= v then changed = true break end
+        end
+    end
+
+    if changed or refresh then
+        iBuffs:UpdateBuffIcons()
+        iBuffs:UpdateAuraCounts(refresh)
+    end
 end
 local lastUpdate = nil
 local function eventCLEU(...)
@@ -26,6 +44,7 @@ function iBuffs:Init()
 
     self.tblBuffs = {}
     self.tblMultiBuffs = {}
+    self.tblClasses = nil
 end
 function iBuffs:IsShown() return self.tblFrame.frame or false end
 function iBuffs:SetShown(val)
@@ -43,7 +62,7 @@ function iBuffs:SetShown(val)
     ns.obs:Register('CLEU:ICON_BUFFS', eventCLEU)
     ns.obs:Register('GROUP_ROSTER_UPDATE', eventGroupRosterUpdate)
 
-    self:UpdateBuffIcons()
+    C_Timer.After(.5, function() eventGroupRosterUpdate(true) end)
 end
 
 --* Create Buff Icon Frames
@@ -100,13 +119,44 @@ function iBuffs:CreateRowFrames()
     fRow2:SetShown(true)
     self.tblFrame.row2 = fRow2
 
-    self.tblBuffs = self:CreateIconFrames(ns.tblIconMulti, fRow2, iconHeight, 2, 'MULTI_BUFFS')
+    self.tblMultiBuffs = self:CreateIconFrames(ns.tblIconMulti, fRow2, iconHeight, 2, 'MULTI_BUFFS')
 end
 --? End of Buff Icon Frames
 
 --* Create Buff Update Routine
-function iBuffs:UpdateBuffIcons(refresh)
-    
+function iBuffs:UpdateBuffIcons()
+    --* Main Icon Buffs
+    for _, v in ipairs(self.tblBuffs) do
+        v.iconFrame.text:SetText('')
+        v.iconFrame.overlay:SetAtlas(nil)
+        v.iconFrame.texture:SetVertexColor(0.5, 0.5, 0.5, 1)
+
+        for k in pairs(v.class) do
+            if self.tblClasses[k] then
+                v.iconFrame.texture:SetVertexColor(1, 1, 1, 1)
+                break
+            end
+        end
+    end
+
+    --* Multi Icon Buffs
+    for _, v in ipairs(self.tblMultiBuffs) do
+        v.iconFrame.text:SetText('')
+        v.iconFrame.overlay:SetAtlas(nil)
+        v.iconFrame.texture:SetVertexColor(0.5, 0.5, 0.5, 1)
+
+        for k in pairs(v.class) do
+            if self.tblClasses[k] then
+                v.iconFrame.texture:SetVertexColor(1, 1, 1, 1)
+                if v.countOnly then ns.frames:CreateFadeAnimation(v.iconFrame.text, self.tblClasses[k]) end
+                break
+            end
+        end
+    end
+end
+function iBuffs:UpdateAuraCounts(refresh)
+    for _, v in ipairs(self.tblBuffs) do v.count = 0 end
+    for _, v in ipairs(self.tblMultiBuffs) do v.count = 0 end
 end
 --? End of Buff Update Routine
 

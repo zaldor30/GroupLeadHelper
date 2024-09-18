@@ -8,11 +8,11 @@ local ACR = LibStub("AceConfigRegistry-3.0")
 ns.core = {}
 local core = ns.core
 
-ns.leader, ns.assistants = nil, {}
-ns.groupOut, ns.groupType = nil, nil
-
 --* GLH Core Functions
 function core:Init()
+    self.addonLoaded = false
+    self.detailsFound = false
+
     ns.tblCLEU = {}
 
     self.dbDefaults = {
@@ -36,7 +36,6 @@ function core:StartGroupLeadHelper() --* Start the Group Lead Helper
     self:StartSlashCommands()
     self:StartEventMonitoring()
 
-    ns.groupType = nil
     ns.code:cOut('Group Lead Helper '..ns.versionOut..' loaded.', ns.GLHColor, true)
 end
 function core:StartDatabase() --* Start the database
@@ -98,39 +97,39 @@ function core:StartEventMonitoring(refresh)
             ns.obs:Notify('CLEU:ICON_BUFFS', CombatLogGetCurrentEventInfo()) end
     end
     local function eventGroupRosterUpdate()
-        ns.groupOut = IsInRaid() and L['RAID'] or (IsInGroup() and L['PARTY'] or nil)
+        if not IsInGroup() then return end
+
         ns.groupType = IsInRaid() and 'RAID' or (IsInGroup() and 'PARTY' or nil)
+        ns.groupOut = ns.groupType == 'RAID' and L['RAID'] or (IsInGroup() and L['PARTY'] or nil)
         if not ns.groupType then return end
 
         ns.leader, ns.assistants = {}, {}
-        if IsInGroup() then
-            for i=1,GetNumGroupMembers() do
-                local name, rank, _, _, _, class = GetRaidRosterInfo(i)
-                if rank == 2 then
-                    ns.leader = { name, class }
-                    if not IsInRaid() then break end
-                elseif rank == 1 then table.insert(ns.assistants, { name, class }) end
-            end
+        for i=1,GetNumGroupMembers() do
+            local name, rank, _, _, _, class = GetRaidRosterInfo(i)
+            if rank == 2 then
+                ns.leader = { name, class }
+                if not IsInRaid() then break end
+            elseif rank == 1 then table.insert(ns.assistants, { name, class }) end
         end
 
         ns.obs:Notify('GROUP_ROSTER_UPDATE', refresh)
-        if ns.base:IsShown() then return
-        else ns.base:SetShown(true) end --! Fix showing
     end
 
     local eventGroupLeft = nil
     local function eventGroupJoined()
+        self.isInGroup = true
+        eventGroupRosterUpdate()
+
         GLH:RegisterEvent('GROUP_LEFT', eventGroupLeft)
         GLH:RegisterEvent('GROUP_ROSTER_UPDATE', eventGroupRosterUpdate)
         GLH:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED', eventCombatLog)
 
-        eventGroupRosterUpdate()
+        if ns.base:IsShown() then return end
+        ns.base:SetShown(true) --! Fix showing
     end
     eventGroupLeft = function()
-        if not self.isInGroup then return end
-
-        ns.groupType = nil
-        ns.groupOut = nil
+        self.isInGroup = false
+        ns.groupType, ns.groupOut = nil, nil
         ns.leader, ns.assistants = nil, {}
 
         GLH:UnregisterAllEvents()
@@ -141,21 +140,17 @@ function core:StartEventMonitoring(refresh)
         GLH:RegisterEvent('GROUP_JOINED', eventGroupJoined)
     end
 
-    if refresh then eventGroupRosterUpdate()
-    elseif IsInGroup() and not ns.groupType then
-        self.isInGroup = true
-        eventGroupJoined()
-        if not ns.groupType then eventGroupLeft() return end
-
-        if ns.base:IsShown() then return end
-        ns.base:SetShown(true)
+    if refresh then eventGroupRosterUpdate() return
+    elseif IsInGroup() then eventGroupJoined()
     elseif not IsInGroup() then eventGroupLeft() end
 end -- CLEU, Group Roster, Group Left, Group Joined
 --? End of ns.core
 
 function GLH:OnInitialize() --* Called when the addon is loaded
     local function startGLH()
+        self.addonLoaded = true
         GLH:UnregisterEvent('ADDON_LOADED')
+
         if not C_AddOns.IsAddOnLoaded('Details') then --* Check if Details! is loaded
             ns.code:fOut('Group Lead Helper '..ns.versionOut..' loaded.', ns.GLHColor, true)
             ns.code:fOut(L['MISSING_ADDON_1'], ns.GLHColor, true)
@@ -163,10 +158,22 @@ function GLH:OnInitialize() --* Called when the addon is loaded
             return
         end
 
-        ns.core:StartGroupLeadHelper()
+        self.detailsFound = true
+    end
+    local function loggedIn()
+        local function tryAgain(try)
+            if self.addonLoaded and self.detailsFound then ns.core:StartGroupLeadHelper() return
+            elseif self.addonLoaded and not self.detailsFound then return end
+
+            if try > 15 then return ns.code:fOut('Group Lead Helper '..ns.versionOut..' failed to load.', 'FFFF0000', true) end
+            C_Timer.After(1, function() tryAgain(try + 1) end)
+        end
+
+        tryAgain(1)
     end
 
     GLH:RegisterEvent('ADDON_LOADED', startGLH)
+    GLH:RegisterEvent('PLAYER_LOGIN', loggedIn)
 end
 
 --* Namespace Globals

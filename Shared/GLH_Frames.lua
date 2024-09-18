@@ -98,7 +98,10 @@ function frames:release(frame)
 end
 
 local tblFade = {}
-function frames:CreateFadeAnimation(fontString, newText)
+function frames:CreateAnimationAtlas(fontString, newData) frames:CreateAnimation(fontString, newData, 'ATLAS_IMAGE') end
+function frames:CreateAnimationTexture(fontString, newData) frames:CreateAnimation(fontString, newData, 'IMAGE') end
+function frames:CreateFadeAnimation(fontString, newText) frames:CreateAnimation(fontString, newText, 'TEXT') end
+function frames:CreateAnimation(fontString, newData, type)
     -- Check if fadeOutGroup exists; if not, create it
     local fadeOutGroup = tblFade[fontString] and tblFade[fontString].fadeOutGroup
     if not fadeOutGroup then
@@ -125,7 +128,9 @@ function frames:CreateFadeAnimation(fontString, newText)
 
     -- When the fade-out finishes, change the text and start fade-in
     fadeOutGroup:SetScript('OnFinished', function()
-        fontString:SetText(newText)  -- Ensure the text is updated here
+        if type == 'TEXT' then fontString:SetText(newData)
+        elseif type == 'IMAGE' then fontString:SetTexture(newData)
+        elseif type == 'ATLAS_IMAGE' then fontString:SetAtlas(newData) end
         fadeOutGroup:Stop()
         fadeInGroup:Play()           -- Start the fade-in animation
     end)

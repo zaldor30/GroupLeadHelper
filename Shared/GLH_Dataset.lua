@@ -58,17 +58,17 @@ function ds:GetBuffs()
 end
 function ds:GetMultiBuffs()
     return {
-        [1] = { id = 113746, name = 'Mystic Touch', icon = C_Spell.GetSpellTexture(113746), count = 0, iconFrame = nil, class = {['MONK'] = true } },
-        [2] = { id = 1490, name = 'Chaos Brand', icon = C_Spell.GetSpellTexture(1490), count = 0, iconFrame = nil, class = {['DEMONHUNTER'] = true } },
-        [3] = { id = 465, name = 'Devotion Aura', icon = C_Spell.GetSpellTexture(465), count = 0, iconFrame = nil, class = {['PALADIN'] = true } },
-        [4] = { id = 20707, name = 'Soulstone', icon = C_Spell.GetSpellTexture(20707), count = 0, iconFrame = nil, class = {['WARLOCK'] = true } },
-        [5] = { id = 20484, name = 'Rebirth', icon = C_Spell.GetSpellTexture(20484), count = 0, iconFrame = nil, class = {
+        [1] = { id = 113746, name = 'Mystic Touch', icon = C_Spell.GetSpellTexture(113746), countOnly = true, count = 0, iconFrame = nil, class = {['MONK'] = true } },
+        [2] = { id = 1490, name = 'Chaos Brand', icon = C_Spell.GetSpellTexture(1490), countOnly = true, count = 0, iconFrame = nil, class = {['DEMONHUNTER'] = true } },
+        [3] = { id = 465, name = 'Devotion Aura', icon = C_Spell.GetSpellTexture(465), countOnly = false, count = 0, iconFrame = nil, class = {['PALADIN'] = true } },
+        [4] = { id = 20707, name = 'Soulstone', icon = C_Spell.GetSpellTexture(20707), countOnly = true, count = 0, iconFrame = nil, class = {['WARLOCK'] = true } },
+        [5] = { id = 20484, name = 'Rebirth', icon = C_Spell.GetSpellTexture(20484), countOnly = true, count = 0, iconFrame = nil, class = {
             ['DRUID'] = true,
             ['WARLOCK'] = true,
             ['DEATHKNIGHT'] = true,
             ['PALADIN'] = true, }
         },
-        [6] = { id = 80353, name = 'Heroism/Bloodlust', icon = C_Spell.GetSpellTexture(80353), count = 0, iconFrame = nil, class = {
+        [6] = { id = 80353, name = 'Heroism/Bloodlust', icon = C_Spell.GetSpellTexture(80353), countOnly = true, count = 0, iconFrame = nil, class = {
             ['SHAMAN'] = true,
             ['HUNTER'] = true,
             ['MAGE'] = true,
