@@ -84,7 +84,7 @@ end
 --* Event Monitoring
 local lastRefresh = nil
 function core:Refresh()
-    if lastRefresh and GetTime() - lastRefresh < 1 then return end
+    if lastRefresh and time() - lastRefresh < 1 then return end
 
     lastRefresh = time()
     ns.code:fOut('Refreshing Group Lead Helper...', ns.GLHColor, true)
@@ -95,7 +95,7 @@ function core:StartEventMonitoring(refresh)
     local function eventCombatLog()
         local _, event, _, sGUID = CombatLogGetCurrentEventInfo()
         if (ns.tblCLEU[event] or event:match('SPELL_AURA')) and sGUID:sub(1,6) == 'Player' then
-            ns.obs:Notify('COMBAT_LOG_EVENT_UNFILTERED', CombatLogGetCurrentEventInfo()) end
+            ns.obs:Notify('CLEU:ICON_BUFFS', CombatLogGetCurrentEventInfo()) end
     end
     local function eventGroupRosterUpdate()
         ns.groupOut = IsInRaid() and L['RAID'] or (IsInGroup() and L['PARTY'] or nil)
@@ -113,7 +113,9 @@ function core:StartEventMonitoring(refresh)
             end
         end
 
-        ns.obs:Notify('GROUP_ROSTER_UPDATE')
+        ns.obs:Notify('GROUP_ROSTER_UPDATE', refresh)
+        if ns.base:IsShown() then return
+        else ns.base:SetShown(true) end --! Fix showing
     end
 
     local eventGroupLeft = nil

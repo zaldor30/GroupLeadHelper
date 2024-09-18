@@ -4,7 +4,6 @@ local L = LibStub("AceLocale-3.0"):GetLocale('GroupLeadHelper')
 ns.base = {}
 local base, gBase = {}, ns.base
 
-local tblFrame = {}
 local locked = 'gficon-chest-evergreen-greatvault-incomplete' --'pvptalents-talentborder-locked' --'Professions_Specialization_Lock'
 local unlocked = 'gficon-chest-evergreen-greatvault-complete' --'pvptalents-talentborder'
 local highlight = 'gficon-chest-evergreen-greatvault-collect' --'pvptalents-talentborder-glow' --'Professions_Specialization_Lock_Glow'
@@ -47,6 +46,8 @@ function base:SetShown(val)
 
     self.tblFrame.frame:SetShown(val)
     ns.groupInfo:SetShown(val)
+    ns.iconBuffs:SetShown(val)
+    gBase.tblBase = self.tblFrame
 end
 function base:CreateBaseFrame()
     local f = self.tblFrame.frame or CreateFrame('Frame', 'GLH_BaseFrame', UIParent, "BackdropTemplate")
@@ -66,6 +67,7 @@ function base:CreateBaseFrame()
     f:SetScript('OnDragStop', OnDragStop)
 
     local top = self.tblFrame.top or CreateFrame('Frame', 'GLH_BaseFrameTop', f)
+    top:EnableMouse(false)
     top:SetPoint('BOTTOM', f, 'TOP', -2, -20)
     top:SetSize(f:GetWidth(), 40)
     self.tblFrame.top = top

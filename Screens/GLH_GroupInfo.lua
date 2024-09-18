@@ -5,23 +5,24 @@ ns.groupInfo = {}
 local gi, groupInfo = {}, ns.groupInfo
 
 --* Event Routines
-local function eventGroupRosterUpdate()
-    if not IsInGroup() then return end
+local function eventGroupRosterUpdate(refresh)
+    if not IsInGroup() or not ns.groupType or not ns.groupOut then return end
 
-    gi:UpdateGroupComposition()
-    if gi.oldLeader ~= ns.leader[1] then
+    gi:UpdateGroupComposition(refresh)
+    if gi.oldLeader ~= ns.leader[1] or refresh then
         gi.oldLeader = ns.leader[1]
         local cName = UnitIsConnected(ns.leader[1]) and ns.code:cPlayer(ns.leader[1], ns.leader[2]) or ns.code:cPlayer(ns.leader[1], nil, 'FF808080')
         ns.frames:CreateFadeAnimation(gi.tblFrame.leaderText, (L['LEADER']..': '..cName))
     end
 
     local dID = ns.groupType == 'raid' and GetRaidDifficultyID() or GetDungeonDifficultyID()
-    if gi.oldDifficulty ~= dID then
-        ns.frames:CreateFadeAnimation(gi.tblFrame.diffText, gi:UpdateDifficulty())
+    if gi.oldDifficulty ~= dID or refresh then
+        local difficulty = gi:UpdateDifficulty(refresh)
+        if difficulty then ns.frames:CreateFadeAnimation(gi.tblFrame.diffText, difficulty) end
     end
 
     local iID = select(8, GetInstanceInfo())
-    if gi.oldInstance ~= iID then
+    if gi.oldInstance ~= iID or refresh then
         gi.oldInstance = iID
         --gi:UpdateInstance()
     end
@@ -54,12 +55,18 @@ function groupInfo:SetShown(val)
     gi:CreateBaseFrame()
     gi:UpdateGroupComposition()
 
-    gi.oldLeader = ns.leader[1]
-    local cName = UnitIsConnected(ns.leader[1]) and ns.code:cPlayer(ns.leader[1], ns.leader[2]) or ns.code:cPlayer(ns.leader[1], nil, 'FF808080')
-    ns.frames:CreateFadeAnimation(gi.tblFrame.leaderText, (L['LEADER']..': '..cName))
-    ns.frames:CreateFadeAnimation(gi.tblFrame.diffText, gi:UpdateDifficulty())
+    if ns.leader[1] and ns.leader[1] ~= '' then
+        print(ns.leader[1])
+        gi.oldLeader = ns.leader[1]
+        local cName = UnitIsConnected(ns.leader[1]) and ns.code:cPlayer(ns.leader[1], ns.leader[2]) or ns.code:cPlayer(ns.leader[1], nil, 'FF808080')
+        ns.frames:CreateFadeAnimation(gi.tblFrame.leaderText, (L['LEADER']..': '..cName))
+    end
+
+    local difficulty = gi:UpdateDifficulty()
+    if difficulty then ns.frames:CreateFadeAnimation(gi.tblFrame.diffText, difficulty) end
 
     gi.tblFrame.frame:SetShown(val)
+    ns.groupInfo.tblFrame = gi.tblFrame
 end
 function gi:CreateBaseFrame()
     local f = self.tblFrame.frame or CreateFrame('Button', 'GLH_GroupInfoFrame', ns.base.tblBase.top)
@@ -68,12 +75,11 @@ function gi:CreateBaseFrame()
     f:SetHighlightAtlas(ns.BLUE_LONG_HIGHLIGHT)
 
     local text = f:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
-    text:SetPoint('TOPLEFT', f, 'TOPLEFT', 0, 0)
+    text:SetPoint('TOPLEFT', f, 'TOPLEFT', 0, -4)
     text:SetPoint('BOTTOMRIGHT', f, 'BOTTOMRIGHT', 0, 0)
     text:SetJustifyH('CENTER')
     text:SetJustifyV('MIDDLE')
     text:SetFont(ns.DEFAULT_FONT, 16)
-    text:SetText(ns.groupOut)
     text:SetTextColor(1, 1, 1, 1)
 
     self.tblFrame.frame = f
@@ -90,7 +96,6 @@ function gi:CreateBaseFrame()
     lText:SetJustifyH('LEFT')
     lText:SetJustifyV('MIDDLE')
     lText:SetFont(ns.DEFAULT_FONT, 14)
-    lText:SetText('Leader: '..ns.leader[1])
     lText:SetTextColor(1, 1, 1, 1)
     lText:SetWordWrap(false)
     self.tblFrame.leaderText = lText
@@ -106,7 +111,6 @@ function gi:CreateBaseFrame()
     dText:SetJustifyH('LEFT')
     dText:SetJustifyV('MIDDLE')
     dText:SetFont(ns.DEFAULT_FONT, 14)
-    dText:SetText('Difficulty: ')
     dText:SetTextColor(1, 1, 1, 1)
     self.tblFrame.diffText = dText
 end
@@ -114,17 +118,19 @@ end
 --* Update Group Composition
 local compOut = nil
 local tankIcon, healerIcon, dpsIcon, unknownIcon = '|A:'..ns.TANK_LFR_ICON..':20:20|a', '|A:'..ns.HEALER_LFR_ICON..':20:20|a', '|A:'..ns.DPS_LFR_ICON..':20:20|a', '|A:'..ns.UNKNOWN_LFR_ICON..':20:20|a'
-function gi:UpdateGroupComposition()
+function gi:UpdateGroupComposition(refresh)
+    if not ns.groupOut then return end
+
     groupInfo.tblClasses = {}
     local tblClasses = groupInfo.tblClasses
     local tanks, healers, dps, unknown = ns.code:GetGroupRoles()
 
-    if self.oldGroupType == ns.groupType and self.tanks == tanks and self.healers == healers and
+    if not refresh and self.oldGroupType == ns.groupType and self.tanks == tanks and self.healers == healers and
         self.dps == dps and self.unknown == unknown then return end
 
     self.oldGroupType = ns.groupType
-    compOut = ns.groupOut..': '..tankIcon..tanks..'  '..healerIcon..healers..'  '..dpsIcon..dps--..' '..unknownIcon..' Unknown'
-    self.tanks, self.healers, self.dps, self.unknown = tanks, healers, dps, unknown
+    compOut = ns.groupOut..': '..tankIcon..(tanks or 0)..'  '..healerIcon..(healers or 0)..'  '..dpsIcon..(dps or 0)--..' '..unknownIcon..' Unknown'
+    self.tanks, self.healers, self.dps, self.unknown = (tanks or 0), (healers or 0), (dps or 0), (unknown or 0)
 
     ns.frames:CreateFadeAnimation(self.tblFrame.compText, compOut)
 end
@@ -139,14 +145,14 @@ end
 --? End of Group Leader
 
 --* Difficulty frame
-function gi:UpdateDifficulty()
+function gi:UpdateDifficulty(refresh)
     local dColor = nil
         local msgDifficulty = 'Difficulty: '..ns.code:cText('FFFF0000', 'Unknown')
         local dungeonID = ns.groupType == 'PARTY' and GetDungeonDifficultyID() or nil
         local rID = ns.groupType == 'RAID' and GetRaidDifficultyID() or nil
 
-        if not gi.oldDifficulty or (dungeonID ~= gi.oldDifficulty or
-            rID == gi.oldDifficulty) then
+        if not gi.oldDifficulty or refresh or dungeonID ~= gi.oldDifficulty or
+            rID == gi.oldDifficulty then
 
             if dungeonID then
                 if dungeonID == 1 then dColor = ns.RARE_COLOR msgDifficulty = 'Difficulty: '..ns.code:cText(dColor, 'Normal')
@@ -162,7 +168,7 @@ function gi:UpdateDifficulty()
             else return end
 
             gi.oldDifficulty = dungeonID or rID
-        end
+        else return end
 
         return msgDifficulty
 end
