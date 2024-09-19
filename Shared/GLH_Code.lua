@@ -134,6 +134,19 @@ function code:sortTableByField(tbl, sortField, reverse, showit)
     table.sort(keyArray, sortFunc)
     return keyArray
 end
+function code:DeepCopy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        for orig_key, orig_value in next, orig, nil do
+            copy[code:DeepCopy(orig_key)] = code:DeepCopy(orig_value)
+        end
+    else -- Non-table types are copied by value
+        copy = orig
+    end
+    return copy
+end
 
 --* notify Functions
 function obs:Init()

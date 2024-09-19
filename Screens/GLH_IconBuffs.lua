@@ -4,37 +4,31 @@ local L = LibStub("AceLocale-3.0"):GetLocale('GroupLeadHelper')
 ns.iconBuffs = {}
 local iBuffs, gBuffs = {}, ns.iconBuffs
 
+local lastRoster = nil
 local function eventGroupRosterUpdate(refresh)
-    if not refresh and not iBuffs.tblClasses then return
+    if lastRoster and GetTime() - lastRoster < 1 then return
     elseif not IsInGroup() or not ns.groupType or not ns.groupOut then return end
+    lastRoster = GetTime()
 
-    iBuffs.tblClasses = {}
-    local tblOld = iBuffs.tblClasses
-    for i=1, GetNumGroupMembers() do
-        local class = select(6, GetRaidRosterInfo(i))
-        iBuffs.tblClasses[class] = iBuffs.tblClasses[class] and iBuffs.tblClasses[class] + 1 or 1
-    end
-
-    local changed = false
-    if not refresh then
-        for k, v in pairs(iBuffs.tblClasses) do
-            if tblOld[k] ~= v then changed = true break end
-        end
-    end
-
-    if changed or refresh then
-        iBuffs:UpdateBuffIcons()
-        iBuffs:UpdateAuraCounts(refresh)
-    end
+    iBuffs:UpdateBuffs(refresh)
+    iBuffs:UpdateCounts(refresh)
 end
-local lastUpdate = nil
+
+local lastAuraUpdate, auraRunning = nil, false
 local function eventCLEU(...)
+    if auraRunning then return end
+
     local _, event, _, _, _, _, _, _, _, _, _, sID, sName = ...
     if event == 'SPELL_AURA_APPLIED' or event == 'SPELL_AURA_REMOVED' then
-        if lastUpdate and GetTime() - lastUpdate < .5 then return
+        if lastAuraUpdate and GetTime() - lastAuraUpdate < .5 then return
         elseif ns.tblBuffsByID[sID] or ns.tblMultiBuffsByID[sID] then
-            lastUpdate = GetTime()
-            iBuffs:UpdateBuffIcons()
+            auraRunning = true
+            lastAuraUpdate = GetTime()
+            C_Timer.After(.5, function()
+                iBuffs:UpdateBuffs()
+                iBuffs:UpdateCounts()
+                auraRunning = false
+            end)
         end
     end
 end
@@ -62,10 +56,11 @@ function iBuffs:SetShown(val)
     ns.obs:Register('CLEU:ICON_BUFFS', eventCLEU)
     ns.obs:Register('GROUP_ROSTER_UPDATE', eventGroupRosterUpdate)
 
-    C_Timer.After(.5, function() eventGroupRosterUpdate(true) end)
+    eventGroupRosterUpdate(true)
 end
 
 --* Create Buff Icon Frames
+local defaultFontSize = 25
 function iBuffs:CreateIconFrames(tbl, parentFrame, iconSize, spacing, tableUsed)
     local totalWidth = (iconSize * #tbl) + (spacing * (#tbl - 1))
         local startX = (parentFrame:GetWidth() - totalWidth) / 2
@@ -89,7 +84,7 @@ function iBuffs:CreateIconFrames(tbl, parentFrame, iconSize, spacing, tableUsed)
 
             local numberText = icon:CreateFontString(nil, "OVERLAY", "GameFontNormal")
             numberText:SetPoint("CENTER", icon, "CENTER", 0, 0)
-            numberText:SetFont(ns.MORPHEUS_FONT, 25, "OUTLINE")
+            numberText:SetFont(ns.MORPHEUS_FONT, defaultFontSize, "OUTLINE")
             numberText:SetTextColor(1, 1, 1, 1)
             v.iconFrame.text = numberText
 
@@ -124,39 +119,129 @@ end
 --? End of Buff Icon Frames
 
 --* Create Buff Update Routine
-function iBuffs:UpdateBuffIcons()
-    --* Main Icon Buffs
-    for _, v in ipairs(self.tblBuffs) do
-        v.iconFrame.text:SetText('')
-        v.iconFrame.overlay:SetAtlas(nil)
-        v.iconFrame.texture:SetVertexColor(0.5, 0.5, 0.5, 1)
+local tblOldBuffs, tblOldMulti, tblBuffsFound, tblClasses = {}, {}, {}, {}
+function iBuffs:UpdateBuffs(refresh, count)
+    --* Prep Tables
+    tblBuffsFound, tblClasses = {}, {}
+    tblOldMulti = {}
 
-        for k in pairs(v.class) do
-            if self.tblClasses[k] then
-                v.iconFrame.texture:SetVertexColor(1, 1, 1, 1)
-                break
+    tblOldMulti = ns.code:DeepCopy(self.tblMultiBuffs)
+
+    self.tblMultiBuffs = ns.tblIconMulti
+
+    --* Find all buffs
+    local finished = true
+    for i=1, GetNumGroupMembers() do
+        local name = GetRaidRosterInfo(i)
+        if not name then finished = false break end
+
+        --name, icon, count, debuffType, duration, expirationTime, source, isStealable, nameplateShowPersonal, spellId
+        AuraUtil.ForEachAura(name, 'HELPFUL', 1, function(...)
+            local aura = { ... }
+            if ns.tblBuffsByID[aura[10]] then
+                local key = ns.tblBuffsByID[aura[10]].key
+                if not tblBuffsFound[aura[10]] then
+                    tblBuffsFound[aura[10]] = {
+                        ['key'] = key,
+                        ['count'] = 1
+                    }
+                else tblBuffsFound[aura[10]].count = tblBuffsFound[aura[10]].count + 1 end
+            elseif ns.tblMultiBuffsByID[aura[10]] then
+                local key = ns.tblMultiBuffsByID[aura[10]].key
+                if not tblBuffsFound[aura[10]] then
+                    tblBuffsFound[aura[10]] = {
+                        ['key'] = key,
+                        ['count'] = 1
+                    }
+                else tblBuffsFound[aura[10]].count = tblBuffsFound[aura[10]].count + 1 end
+            end
+        end)
+
+        local class = select(6, GetRaidRosterInfo(i))
+        tblClasses[class] = (tblClasses[class] or 0) + 1
+    end
+    if not finished then
+        if count > 10 then ns.code:dOut('Failed to find all buffs.', ns.GLHColor, true) return
+        else C_Timer.After(1, function() iBuffs:UpdateBuffs(refresh, count+1) end) end
+    end
+
+    --* Update Count Only Multi Buffs
+    for k, v in ipairs(self.tblMultiBuffs) do
+        v.iconFrame.texture:SetVertexColor(0.5, 0.5, 0.5, 1)
+        v.iconFrame.overlay:SetAtlas(nil)
+        v.iconFrame.text:SetText('')
+        v.count, v.buffGiverFound = 0, false
+
+        if v.countOnly then
+            for c in pairs(v.class) do
+                if tblClasses[c] or tblBuffsFound[v.id] then
+                    v.count = (v.count or 0) + tblClasses[c]
+                    v.buffGiverFound = true
+                end
+            end
+
+            if v.buffGiverFound then
+                if refresh or v.count ~= tblOldMulti[k].count then
+                    v.iconFrame.texture:SetVertexColor(1, 1, 1, 1)
+                    ns.frames:CreateFadeAnimation(v.iconFrame.text, (v.count or ''))
+                else
+                    v.iconFrame.texture:SetVertexColor(1, 1, 1, 1)
+                    v.iconFrame.text:SetText(v.count or '')
+                end
             end
         end
     end
-
-    --* Multi Icon Buffs
-    for _, v in ipairs(self.tblMultiBuffs) do
-        v.iconFrame.text:SetText('')
-        v.iconFrame.overlay:SetAtlas(nil)
-        v.iconFrame.texture:SetVertexColor(0.5, 0.5, 0.5, 1)
-
-        for k in pairs(v.class) do
-            if self.tblClasses[k] then
-                v.iconFrame.texture:SetVertexColor(1, 1, 1, 1)
-                if v.countOnly then ns.frames:CreateFadeAnimation(v.iconFrame.text, self.tblClasses[k]) end
-                break
-            end
-        end
-    end
+    tblOldMulti = nil
 end
-function iBuffs:UpdateAuraCounts(refresh)
-    for _, v in ipairs(self.tblBuffs) do v.count = 0 end
-    for _, v in ipairs(self.tblMultiBuffs) do v.count = 0 end
+function iBuffs:UpdateCounts(refresh)
+    tblOldBuffs = {}
+    tblOldBuffs = ns.code:DeepCopy(self.tblBuffs)
+    self.tblBuffs = ns.tblIconBuffs
+
+    local function updateIcon(k, v)
+        v.iconFrame.texture:SetVertexColor(0.5, 0.5, 0.5, 1)
+        v.iconFrame.text:SetText('')
+        v.iconFrame.overlay:SetAtlas(nil)
+        v.count, v.buffGiverFound = 0, false
+
+        v.count = GetNumGroupMembers() - (tblBuffsFound[v.id] and tblBuffsFound[v.id].count or 0)
+
+        for c in pairs(v.class) do
+            if tblClasses[c] then
+                v.buffGiverFound = true
+                break
+            end
+        end
+
+        if v.buffGiverFound then
+            if v.count <= 0 then
+                v.count = 0
+                v.iconFrame.texture:SetVertexColor(1, 1, 1, 1)
+                if v.count ~= tblOldBuffs[k].count then
+                    ns.frames:CreateAnimationAtlas(v.iconFrame.overlay, ns.GREEN_CHECK)
+                else v.iconFrame.overlay:SetAtlas(ns.GREEN_CHECK) end
+            elseif v.count == GetNumGroupMembers() then
+                v.iconFrame.texture:SetVertexColor(1, 1, 1, 1)
+                if v.count ~= tblOldBuffs[k].count then
+                    ns.frames:CreateAnimationAtlas(v.iconFrame.overlay, ns.RED_CHECK)
+                else v.iconFrame.overlay:SetAtlas(ns.RED_CHECK) end
+            else
+                v.iconFrame.text:SetTextColor(1, 1, 0, 1)
+                v.iconFrame.texture:SetVertexColor(1, 1, 1, 1)
+                if v.count >= 10 then v.iconFrame.text:SetFont(ns.MORPHEUS_FONT, 20, "OUTLINE")
+                else v.iconFrame.text:SetFont(ns.MORPHEUS_FONT, defaultFontSize, "OUTLINE") end
+                if v.count ~= tblOldBuffs[k].count then
+                    ns.frames:CreateFadeAnimation(v.iconFrame.text, (v.count or ''))
+                else v.iconFrame.text:SetText(v.count or '') end
+            end
+        end
+    end
+
+    for k, v in ipairs(self.tblBuffs) do updateIcon(k, v) end
+    for k, v in ipairs(self.tblMultiBuffs) do
+        if not v.countOnly then updateIcon(k, v) end
+    end
+    tblOldBuffs = nil
 end
 --? End of Buff Update Routine
 
