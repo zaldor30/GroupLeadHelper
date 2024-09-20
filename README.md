@@ -9,7 +9,7 @@
 Group Lead Helper is an addon that is based off my popular Raid Lead Helper WeakAura.  This is a tool designed to be a lightweight addon that will help you with your raid leading and dungeon leading.  It is designed to be used in conjunction with other addons like MRT, DBM, BigWigs, and WeakAuras.  It is not a replacement for those addons, but a supplement to them.
 
 ## Features (Current and Planned)
-### NOTE: This a pre-release and not all features are available yet.
+### -=> NOTE: This a pre-release and not all features are available yet. <=-
 
 * Comp information including break points for raids.
 * Leader information and current difficulty indicator.
