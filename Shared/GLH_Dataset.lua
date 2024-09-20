@@ -87,4 +87,19 @@ function ds:SortBuffsByID(tbl)
 
     return tbl
 end
+function ds:GetComps()
+    return {
+        ['PARTY'] = {
+            [1] = { name = '1/1/3', tank = 1, healer = 1, dps = 3, startSize = 0, endSize = 5 }
+        },
+        ['RAID'] = {
+            [1] = { name = '2/2/6', tank = 2, healer = 2, dps = 6, startSize = 0, endSize = 12 },
+            [2] = { name = '2/3/9', tank = 2, healer = 3, dps = 9, startSize = 13, endSize = 18 },
+            [3] = { name = '2/4/12', tank = 2, healer = 4, dps = 12, startSize = 20, endSize = 20 },
+            [5] = { name = '2/5/15', tank = 2, healer = 5, dps = 15, startSize = 21, endSize = 23 },
+            [6] = { name = '2/5/19', tank = 2, healer = 5, dps = 19, startSize = 23, endSize = 28 },
+            [7] = { name = '2/6/22', tank = 2, healer = 6, dps = 24, startSize = 29, endSize = 30 },
+        },
+    }
+end
 ds:Init()

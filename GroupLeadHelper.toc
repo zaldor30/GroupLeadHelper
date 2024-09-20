@@ -1,9 +1,9 @@
-# X-Curse-Project-ID: 882061
-# X-Website: https://www.curseforge.com/wow/addons/guild-recruiter
+## X-Curse-Project-ID: 1105905
+## X-Website: https://www.curseforge.com/wow/addons/group-lead-helper
 
 ## Interface: 110002
 ## Title: Group Lead Helper
-## Version: 1.0.0
+## Version: 1.0.1
 ## Notes: Easy track important information about your group members.
 ## Author: Moonfury
 ## SavedVariables: GroupLeadHelperDB

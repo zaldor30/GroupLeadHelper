@@ -180,7 +180,7 @@ end
 ns.version, ns.dbVersion = GLH.version, '1.0'
 ns.isTesting = false
 ns.isPreRelease = true
-ns.preReleaseType = 'Pre-Alpha'
+ns.preReleaseType = 'Alpha'
 ns.versionOut = '(v'..ns.version..(ns.isPreRelease and ' '..ns.preReleaseType or '')..')'
 
 ns.debug = false
