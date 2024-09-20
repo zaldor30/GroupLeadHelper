@@ -8,7 +8,7 @@ local code, obs = ns.code, ns.obs
 function code:consolePrint(msg, color, noPrefix)
     if msg == '' or not msg then return end
 
-    local prefix = not noPrefix and self:cText(ns.GLHColor, 'RLH: ') or ''
+    local prefix = not noPrefix and self:cText(ns.GLHColor, 'GLH: ') or ''
 
     color = strlen(color) == 6 and 'FF'..color or color
     DEFAULT_CHAT_FRAME:AddMessage(prefix..code:cText(color or 'FFFFFFFF', msg))

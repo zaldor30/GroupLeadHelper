@@ -29,6 +29,10 @@ end
 base:Init()
 
 function base:SetShown(val)
+    if not IsInGroup() then
+        ns.code:fOut(L['NOT_IN_GROUP'], ns.GLHColor)
+        return end
+
     if not val then
         if self.tblFrame.frame then self.tblFrame.frame:SetShown(val) end
 
