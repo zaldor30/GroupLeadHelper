@@ -96,23 +96,46 @@ function core:StartEventMonitoring(refresh)
         if (ns.tblCLEU[event] or event:match('SPELL_AURA')) and sGUID:sub(1,6) == 'Player' then
             ns.obs:Notify('CLEU:ICON_BUFFS', CombatLogGetCurrentEventInfo()) end
     end
+
     local function eventGroupRosterUpdate()
-        if not IsInGroup() then return end
+        local function UpdateGroupRoster()
+            if not IsInGroup() then return end
 
-        ns.groupType = IsInRaid() and 'RAID' or (IsInGroup() and 'PARTY' or nil)
-        ns.groupOut = ns.groupType == 'RAID' and L['RAID'] or (IsInGroup() and L['PARTY'] or nil)
-        if not ns.groupType then return end
+            local groupType = IsInRaid() and 'RAID' or (IsInGroup() and 'PARTY' or nil)
+            local groupOut = ns.GroupRoster.groupType == 'RAID' and L['RAID'] or (IsInGroup() and L['PARTY'] or nil)
+            if not groupType then return end
 
-        ns.leader, ns.assistants = {}, {}
-        for i=1,GetNumGroupMembers() do
-            local name, rank, _, _, _, class = GetRaidRosterInfo(i)
-            if rank == 2 then
-                ns.leader = { name, class }
-                if not IsInRaid() then break end
-            elseif rank == 1 then table.insert(ns.assistants, { name, class }) end
+            ns.GroupRoster = {
+                leader = nil,
+                assistants = {},
+                groupType = groupType,
+                groupOut = groupOut,
+                roster = {},
+            }
+            local GroupRoster = ns.GroupRoster
+
+            for i=1,GetNumGroupMembers() do
+                local rosterRec = { GetRaidRosterInfo(i) }
+                GroupRoster.roster[rosterRec[1]] = {
+                    name = rosterRec[1],
+                    rank = rosterRec[2],
+                    subParty = rosterRec[3],
+                    level = rosterRec[4],
+                    class = rosterRec[5],
+                    classFile = rosterRec[6],
+                    zone = rosterRec[7],
+                    isOnline = rosterRec[8],
+                    isDead = rosterRec[9],
+                }
+                if GroupRoster.rank == 2 then ns.GroupRoster.leader = { GroupRoster.name, class }
+                elseif GroupRoster.rank == 1 then table.insert(GroupRoster.assistants, { GroupRoster.name, class }) end
+            end
         end
 
-        ns.obs:Notify('GROUP_ROSTER_UPDATE', refresh)
+        C_Timer.After(.5, function()
+            UpdateGroupRoster()
+            ns.obs:Notify('GROUP_ROSTER_UPDATE', refresh)
+        end)
     end
 
     local eventGroupLeft = nil
@@ -129,8 +152,9 @@ function core:StartEventMonitoring(refresh)
     end
     eventGroupLeft = function()
         self.isInGroup = false
-        ns.groupType, ns.groupOut = nil, nil
-        ns.leader, ns.assistants = nil, {}
+        ns.GroupRoster = {}
+        ns.GroupRoster.groupType, ns.GroupRoster.groupOut = nil, nil
+        ns.GroupRoster.leader, ns.GroupRoster.assistants = nil, {}
 
         GLH:UnregisterAllEvents()
         ns.obs:Notify('GROUP_LEFT')

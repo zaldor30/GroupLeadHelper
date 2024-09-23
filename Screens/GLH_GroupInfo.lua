@@ -6,16 +6,16 @@ local gi, groupInfo = {}, ns.groupInfo
 
 --* Event Routines
 local function eventGroupRosterUpdate(refresh)
-    if not IsInGroup() or not ns.groupType or not ns.groupOut then return end
+    if not IsInGroup() or not ns.GroupRoster.groupType or not ns.GroupRoster.groupOut then return end
 
     gi:UpdateGroupComposition(refresh)
-    if ns.leader and (gi.oldLeader ~= ns.leader[1] or refresh) then
-        gi.oldLeader = ns.leader[1]
-        local cName = UnitIsConnected(ns.leader[1]) and ns.code:cPlayer(ns.leader[1], ns.leader[2]) or ns.code:cPlayer(ns.leader[1], nil, 'FF808080')
+    if ns.GroupRoster.leader and (gi.oldLeader ~= ns.GroupRoster.leader[1] or refresh) then
+        gi.oldLeader = ns.GroupRoster.leader[1]
+        local cName = UnitIsConnected(ns.GroupRoster.leader[1]) and ns.code:cPlayer(ns.GroupRoster.leader[1], ns.GroupRoster.leader[2]) or ns.code:cPlayer(ns.GroupRoster.leader[1], nil, 'FF808080')
         ns.frames:CreateFadeAnimation(gi.tblFrame.leaderText, (L['LEADER']..': '..cName))
     end
 
-    local dID = ns.groupType == 'raid' and GetRaidDifficultyID() or GetDungeonDifficultyID()
+    local dID = ns.GroupRoster.groupType == 'raid' and GetRaidDifficultyID() or GetDungeonDifficultyID()
     if gi.oldDifficulty ~= dID or refresh then
         local difficulty = gi:UpdateDifficulty(refresh)
         if difficulty then ns.frames:CreateFadeAnimation(gi.tblFrame.diffText, difficulty) end
@@ -75,9 +75,9 @@ function groupInfo:SetShown(val)
     gi:CreateBaseFrame()
     gi:UpdateGroupComposition()
 
-    if ns.leader and ns.leader[1] and ns.leader[1] ~= '' then
-        gi.oldLeader = ns.leader[1]
-        local cName = UnitIsConnected(ns.leader[1]) and ns.code:cPlayer(ns.leader[1], ns.leader[2]) or ns.code:cPlayer(ns.leader[1], nil, 'FF808080')
+    if ns.GroupRoster.leader and ns.GroupRoster.leader[1] and ns.GroupRoster.leader[1] ~= '' then
+        gi.oldLeader = ns.GroupRoster.leader[1]
+        local cName = UnitIsConnected(ns.GroupRoster.leader[1]) and ns.code:cPlayer(ns.GroupRoster.leader[1], ns.GroupRoster.leader[2]) or ns.code:cPlayer(ns.GroupRoster.leader[1], nil, 'FF808080')
         ns.frames:CreateFadeAnimation(gi.tblFrame.leaderText, (L['LEADER']..': '..cName))
     end
 
@@ -174,7 +174,7 @@ local compOut = nil
 local tankIcon, healerIcon, dpsIcon, unknownIcon = '|A:'..ns.TANK_LFR_ICON..':20:20|a', '|A:'..ns.HEALER_LFR_ICON..':20:20|a', '|A:'..ns.DPS_LFR_ICON..':20:20|a', '|A:'..ns.UNKNOWN_LFR_ICON..':20:20|a'
 function gi:CompIndicators(tanks, healers, dps, unknown)
     local players = GetNumGroupMembers()
-    local tblComps = self.tblComps[ns.groupType]
+    local tblComps = self.tblComps[ns.GroupRoster.groupType]
     if not tblComps then return end
 
     for k, v in pairs(tblComps) do
@@ -191,13 +191,13 @@ function gi:CompIndicators(tanks, healers, dps, unknown)
         tanks = ns.code:cText('FFFF0000', tanks) end
 
     healers = healers or 0
-    local addPad = ns.groupType == 'RAID' and 1 or 0
+    local addPad = ns.GroupRoster.groupType == 'RAID' and 1 or 0
     if healers < tblComps[self.activeComp].healer or healers > tblComps[self.activeComp].healer + addPad then
         healers = ns.code:cText('FFFF0000', healers)
     elseif healers == tblComps[self.activeComp].healer + addPad then ns.code:cText('FFFFFF00', healers) end
 
     dps = dps or 0
-    addPad = ns.groupType == 'RAID' and 2 or 0
+    addPad = ns.GroupRoster.groupType == 'RAID' and 2 or 0
     if dps < tblComps[self.activeComp].dps or dps > tblComps[self.activeComp].dps + addPad then
         dps = ns.code:cText('FFFF0000', dps)
     elseif dps == tblComps[self.activeComp].dps then return tanks, healers, dps, unknown, buildComp
@@ -207,18 +207,18 @@ function gi:CompIndicators(tanks, healers, dps, unknown)
 end
 
 function gi:UpdateGroupComposition(refresh)
-    if not ns.groupOut then return end
+    if not ns.GroupRoster.groupOut then return end
 
     local tanks, healers, dps, unknown = ns.code:GetGroupRoles()
 
-    if not refresh and self.oldGroupType == ns.groupType and self.tanks == tanks and self.healers == healers and
+    if not refresh and self.oldGroupType == ns.GroupRoster.groupType and self.tanks == tanks and self.healers == healers and
         self.dps == dps and self.unknown == unknown then return end
     self.tanks, self.healers, self.dps, self.unknown = (tanks or 0), (healers or 0), (dps or 0), (unknown or 0)
 
     tanks, healers, dps, unknown = gi:CompIndicators(tanks, healers, dps, unknown)
 
-    self.oldGroupType = ns.groupType
-    compOut = ns.groupOut..': '..tankIcon..(tanks or 0)..'  '..healerIcon..(healers or 0)..'  '..dpsIcon..(dps or 0)--..' '..unknownIcon..' Unknown'
+    self.oldGroupType = ns.GroupRoster.groupType
+    compOut = ns.GroupRoster.groupOut..': '..tankIcon..(tanks or 0)..'  '..healerIcon..(healers or 0)..'  '..dpsIcon..(dps or 0)--..' '..unknownIcon..' Unknown'
 
     ns.frames:CreateFadeAnimation(self.tblFrame.compText, compOut)
 end
@@ -236,7 +236,7 @@ end
 --* Create Group Leader Tooltip
 function gi:GetGroupLeaders()
     local gLead = ''
-    local title, body = ns.groupType..' Leader', '\n \nAssistants:\n'
+    local title, body = ns.GroupRoster.groupType..' Leader', '\n \nAssistants:\n'
 
     if IsInRaid() then
         for i=1, GetNumGroupMembers() do
@@ -251,7 +251,7 @@ function gi:GetGroupLeaders()
                 gLead = 'Leader: '..ns.code:cPlayer(unit, UnitClassBase(unit))..(not connected and ' <offline>' or '')
             end
         end
-    elseif ns.groupType == 'Party' then
+    elseif ns.GroupRoster.groupType == 'Party' then
         for i=1, GetNumGroupMembers() do
             local unit = GetRaidRosterInfo(i)
             if not unit then unit = UnitName('player') end
@@ -268,20 +268,20 @@ function gi:GetGroupLeaders()
     return title, body, gLead
 end
 function gi:CreateGroupLeaderToolTip()
-    if not ns.groupType then return end
+    if not ns.GroupRoster.groupType then return end
 
     local title, body = L['GROUP_LEADER'], '\n \n'..L['GROUP_ASSISTANT']..':\n'
-    local gLead = ns.groupOut..' '..L['LEADER']..': '..ns.code:cPlayer(ns.leader[1], ns.leader[2])
-    gLead = UnitIsConnected(ns.leader[1]) and gLead or gLead..ns.code:cText('FF808080', ' <offline>')
+    local gLead = ns.GroupRoster.groupOut..' '..L['LEADER']..': '..ns.code:cPlayer(ns.GroupRoster.leader[1], ns.GroupRoster.leader[2])
+    gLead = UnitIsConnected(ns.GroupRoster.leader[1]) and gLead or gLead..ns.code:cText('FF808080', ' <offline>')
 
     local tblOffline = {}
     for i=1, GetNumGroupMembers() do
         local unit,_,_,_,_,_,_, online = GetRaidRosterInfo(i)
         tblOffline[unit] = online
     end
-    if #ns.assistants > 0 then
-        for i=1, #ns.assistants do
-            local unit = ns.assistants[i]
+    if #ns.GroupRoster.assistants > 0 then
+        for i=1, #ns.GroupRoster.assistants do
+            local unit = ns.GroupRoster.assistants[i]
             body = body..ns.code:cPlayer(unit[1], unit[2])..(tblOffline[unit[1]] and '' or ns.code:cText('FF808080', ' <offline>'))..'\n'
         end
         body = gLead..body
@@ -295,8 +295,8 @@ end
 function gi:UpdateDifficulty(refresh)
     local dColor = nil
         local msgDifficulty = 'Difficulty: '..ns.code:cText('FFFF0000', 'Unknown')
-        local dungeonID = ns.groupType == 'PARTY' and GetDungeonDifficultyID() or nil
-        local rID = ns.groupType == 'RAID' and GetRaidDifficultyID() or nil
+        local dungeonID = ns.GroupRoster.groupType == 'PARTY' and GetDungeonDifficultyID() or nil
+        local rID = ns.GroupRoster.groupType == 'RAID' and GetRaidDifficultyID() or nil
 
         if not gi.oldDifficulty or refresh or dungeonID ~= gi.oldDifficulty or
             rID == gi.oldDifficulty then

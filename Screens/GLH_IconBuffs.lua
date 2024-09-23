@@ -7,7 +7,7 @@ local iBuffs, gBuffs = {}, ns.iconBuffs
 local lastRoster = nil
 local function eventGroupRosterUpdate(refresh)
     if lastRoster and GetTime() - lastRoster < 1 then return
-    elseif not IsInGroup() or not ns.groupType or not ns.groupOut then return end
+    elseif not IsInGroup() or not ns.GroupRoster.groupType or not ns.GroupRoster.groupOut then return end
     lastRoster = GetTime()
 
     iBuffs:UpdateBuffs(refresh)

@@ -79,9 +79,9 @@ end
 
 --* GROUP_ROSTER_UPDATE Routines
 function code:GetGroupRoles()
-    if not ns.groupType then return end
+    if not ns.GroupRoster.groupType then return end
 
-    local partyType = strlower(ns.groupType)
+    local partyType = strlower(ns.GroupRoster.groupType)
     local tank, healer, dps, unknown, tblTanks, tblHealers = 0, 0, 0, 0, {}, {}
 
     for i=1,GetNumGroupMembers() do
