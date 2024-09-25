@@ -101,6 +101,7 @@ function core:StartEventMonitoring(refresh)
         local function UpdateGroupRoster()
             if not IsInGroup() then return end
 
+            ns.GroupRoster = {}
             local groupType = IsInRaid() and 'RAID' or (IsInGroup() and 'PARTY' or nil)
             local groupOut = ns.GroupRoster.groupType == 'RAID' and L['RAID'] or (IsInGroup() and L['PARTY'] or nil)
             if not groupType then return end

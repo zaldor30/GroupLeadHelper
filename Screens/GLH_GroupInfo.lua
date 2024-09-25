@@ -75,7 +75,7 @@ function groupInfo:SetShown(val)
     gi:CreateBaseFrame()
     gi:UpdateGroupComposition()
 
-    if ns.GroupRoster.leader and ns.GroupRoster.leader[1] and ns.GroupRoster.leader[1] ~= '' then
+    if ns.groupRoster and ns.GroupRoster.leader and ns.GroupRoster.leader[1] and ns.GroupRoster.leader[1] ~= '' then
         gi.oldLeader = ns.GroupRoster.leader[1]
         local cName = UnitIsConnected(ns.GroupRoster.leader[1]) and ns.code:cPlayer(ns.GroupRoster.leader[1], ns.GroupRoster.leader[2]) or ns.code:cPlayer(ns.GroupRoster.leader[1], nil, 'FF808080')
         ns.frames:CreateFadeAnimation(gi.tblFrame.leaderText, (L['LEADER']..': '..cName))
@@ -183,6 +183,7 @@ function gi:CompIndicators(tanks, healers, dps, unknown)
             break
         end
     end
+    if not activeComp then return tanks, healers, dps, unknown, nil end
 
     local buildComp = tblComps[self.activeComp].name
 
@@ -207,7 +208,7 @@ function gi:CompIndicators(tanks, healers, dps, unknown)
 end
 
 function gi:UpdateGroupComposition(refresh)
-    if not ns.GroupRoster.groupOut then return end
+    if not ns.GroupRoster or not ns.GroupRoster.groupOut then return end
 
     local tanks, healers, dps, unknown = ns.code:GetGroupRoles()
 
@@ -268,7 +269,7 @@ function gi:GetGroupLeaders()
     return title, body, gLead
 end
 function gi:CreateGroupLeaderToolTip()
-    if not ns.GroupRoster.groupType then return end
+    if not ns.GroupRoster or not ns.GroupRoster.groupType or not ns.GroupRoster.leader  then return end
 
     local title, body = L['GROUP_LEADER'], '\n \n'..L['GROUP_ASSISTANT']..':\n'
     local gLead = ns.GroupRoster.groupOut..' '..L['LEADER']..': '..ns.code:cPlayer(ns.GroupRoster.leader[1], ns.GroupRoster.leader[2])
@@ -293,6 +294,8 @@ end
 
 --* Difficulty frame
 function gi:UpdateDifficulty(refresh)
+    if not ns.groupRoster then return end
+
     local dColor = nil
         local msgDifficulty = 'Difficulty: '..ns.code:cText('FFFF0000', 'Unknown')
         local dungeonID = ns.GroupRoster.groupType == 'PARTY' and GetDungeonDifficultyID() or nil

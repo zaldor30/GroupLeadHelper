@@ -6,6 +6,8 @@ local iBuffs, gBuffs = {}, ns.iconBuffs
 
 local lastRoster = nil
 local function eventGroupRosterUpdate(refresh)
+    if not ns.GroupRoster then return end
+
     if lastRoster and GetTime() - lastRoster < 1 then return
     elseif not IsInGroup() or not ns.GroupRoster.groupType or not ns.GroupRoster.groupOut then return end
     lastRoster = GetTime()
@@ -24,7 +26,7 @@ local function eventCLEU(...)
         elseif ns.tblBuffsByID[sID] or ns.tblMultiBuffsByID[sID] then
             auraRunning = true
             lastAuraUpdate = GetTime()
-            C_Timer.After(.5, function()
+            C_Timer.After(.2, function()
                 iBuffs:UpdateBuffs()
                 iBuffs:UpdateCounts()
                 auraRunning = false
@@ -175,7 +177,7 @@ function iBuffs:UpdateBuffs(refresh, count)
         if v.countOnly then
             for c in pairs(v.class) do
                 if tblClasses[c] or tblBuffsFound[v.id] then
-                    v.count = (v.count or 0) + tblClasses[c]
+                    v.count = (v.count or 0) + (tblClasses[c] or 0)
                     v.buffGiverFound = true
                 end
             end
