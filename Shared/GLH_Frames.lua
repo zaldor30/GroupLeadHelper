@@ -1,37 +1,7 @@
 local _, ns = ... -- Namespace (myaddon, namespace)
-local L = LibStub("AceLocale-3.0"):GetLocale('GroupLeadHelper')
 
 ns.frames = {}
 local frames = ns.frames
-
-frames.BUTTON_LOCKED = ns.ICON_PATH..'GLH_Locked'
-frames.BUTTON_UNLOCKED = ns.ICON_PATH..'GLH_Unlocked'
-
--- Backdrop Templates
-frames.DEFAULT_BORDER = 'Interface\\Tooltips\\UI-Tooltip-Border'
-frames.BLANK_BACKGROUND = 'Interface\\Buttons\\WHITE8x8'
-frames.DIALOGUE_BACKGROUND = 'Interface\\DialogFrame\\UI-DialogBox-Background'
-function frames.BackdropTemplate(bgImage, edgeImage, tile, tileSize, edgeSize, insets)
-	tile = tile == 'NO_TILE' and false or true
-
-	return {
-		bgFile = bgImage or frames.DIALOGUE_BACKGROUND,
-		edgeFile = edgeImage or frames.DEFAULT_BORDER,
-		tile = true,
-		tileSize = tileSize or 16,
-		edgeSize = edgeSize or 16,
-		insets = insets or { left = 3, right = 3, top = 3, bottom = 3 }
-	}
-end
-
--- Frame Stratas
-frames.BACKGROUND_STRATA = 'BACKGROUND'
-frames.LOW_STRATA = 'LOW'
-frames.MEDIUM_STRATA = 'MEDIUM'
-frames.HIGH_STRATA = 'HIGH'
-frames.DIALOG_STRATA = 'DIALOG'
-frames.TOOLTIP_STRATA = 'TOOLTIP'
-frames.DEFAULT_STRATA = frames.BACKGROUND_STRATA
 
 --* Frame Pooling
 local FramePool = {} -- Pool of frames to reuse
@@ -56,7 +26,8 @@ function frames:ResetFrame(frame)
     frame:Hide()
 end
 -- Function to get a frame from the pool or create a new one
-function frames:CreateFrame(name, parent, useBackdrop, backdropTemplate, frameType)
+function frames:CreateFrame(frameType, name, parent, backdropTemplate)
+    local useBackdrop = backdropTemplate or false
     -- Check if a frame is available in the pool
     local frame = table.remove(FramePool)
 
@@ -66,7 +37,7 @@ function frames:CreateFrame(name, parent, useBackdrop, backdropTemplate, frameTy
 
         -- If using the BackdropTemplate, set up the backdrop
         if useBackdrop then
-            frame:SetBackdrop(backdropTemplate or frames.BackdropTemplate())
+            frame:SetBackdrop(backdropTemplate or ns.BackdropTemplate())
             frame:SetBackdropColor(0, 0, 0, 0.5)  -- Example: semi-transparent black background
         end
     else
@@ -80,7 +51,7 @@ function frames:CreateFrame(name, parent, useBackdrop, backdropTemplate, frameTy
             if not frame.SetBackdrop then
                 Mixin(frame, BackdropTemplateMixin)  -- Ensure the backdrop is available
             end
-            frame:SetBackdrop(backdropTemplate or frames.BACKDROP_TEMPLATE)
+            frame:SetBackdrop(backdropTemplate or ns.BACKDROP_TEMPLATE)
             frame:SetBackdropColor(0, 0, 0, 0.5)
         else
             -- Clear the backdrop if not required

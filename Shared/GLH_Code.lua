@@ -1,8 +1,7 @@
 local _, ns = ... -- Namespace (myaddon, namespace)
-local L = LibStub("AceLocale-3.0"):GetLocale('GroupLeadHelper')
 
-ns.code, ns.obs = {}, {}
-local code, obs = ns.code, ns.obs
+ns.code = {}
+local code = ns.code
 
 --* Console print routines
 function code:consolePrint(msg, color, noPrefix)
@@ -147,39 +146,3 @@ function code:DeepCopy(orig)
     end
     return copy
 end
-
---* notify Functions
-function obs:Init()
-    self.notify = {}
-end
-function obs:Register(event, callback)
-    if not event or not callback then return end
-
-    if not self.notify[event] then self.notify[event] = {} end
-    table.insert(self.notify[event], callback)
-end
-function obs:Unregister(event, callback)
-    if not event or not callback then return end
-    if not self.notify[event] then return end
-    for i=#self.notify[event],1,-1 do
-        if self.notify[event][i] == callback then
-            table.remove(self.notify[event], i)
-        end
-    end
-end
-function obs:UnregisterAll(event)
-    if not event then return end
-    if not self.notify[event] then return end
-    for i=#self.notify[event],1,-1 do
-        table.remove(self.notify[event], i)
-    end
-end
-function obs:Notify(event, ...)
-    if not event or not self.notify[event] then return end
-
-    for i=1,#self.notify[event] do
-        if self.notify[event][i] then
-            self.notify[event][i](...) end
-    end
-end
-obs:Init()
