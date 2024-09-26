@@ -5,36 +5,50 @@ ns.events, ns.obs = {}, {}
 local events, obs = ns.events, ns.obs
 
 --* Event Functions
-local function eventGROUP_ROSTER_UPDATE()
+local function eventGROUP_ROSTER_UPDATE(refresh)
     local groupType, groupOut = IsInRaid() and 'RAID' or 'PARTY', IsInRaid() and L['RAID'] or L['PARTY']
 
-    ns.GroupRoster = {
+    ns.roster = {}
+    ns.groupInfo = {
         leader = nil,
         assistants = {},
         groupType = groupType,
         groupOut = groupOut,
         roster = {},
     }
-    local GroupRoster = ns.GroupRoster
 
-    for i=1,GetNumGroupMembers() do
-        local rosterRec = { GetRaidRosterInfo(i) }
-        GroupRoster.roster[rosterRec[1]] = {
-            name = rosterRec[1],
-            rank = rosterRec[2],
-            subParty = rosterRec[3],
-            level = rosterRec[4],
-            class = rosterRec[5],
-            classFile = rosterRec[6],
-            zone = rosterRec[7],
-            isOnline = rosterRec[8],
-            isDead = rosterRec[9],
-        }
-        if GroupRoster.rank == 2 then ns.GroupRoster.leader = { GroupRoster.name, class }
-        elseif GroupRoster.rank == 1 then table.insert(GroupRoster.assistants, { GroupRoster.name, class }) end
+    local retry = false
+    local function getRoster(try)
+        for i=1,GetNumGroupMembers() do
+            local rosterRec = { GetRaidRosterInfo(i) }
+            if not rosterRec[1] then
+                retry = true
+                break
+            end
+            ns.roster[rosterRec[1]] = {
+                name = rosterRec[1],
+                rank = rosterRec[2],
+                subParty = rosterRec[3],
+                level = rosterRec[4],
+                class = rosterRec[5],
+                classFile = rosterRec[6],
+                zone = rosterRec[7],
+                isOnline = rosterRec[8],
+                isDead = rosterRec[9],
+            }
+
+            if rosterRec[2] == 2 then ns.groupInfo.leader = { rosterRec[1], rosterRec[6] }
+            elseif rosterRec[2] == 1 then table.insert(ns.groupInfo.assistants, { rosterRec[1], rosterRec[6] }) end
+        end
+
+        if try > 10 then
+            ns.code:dOut('Failed to get roster after 10 tries (eventGROUP_ROSTER_UPDATE).')
+            return
+        elseif retry then C_Timer.After(1, function() getRoster(try + 1) end) end
+
+        obs:Notify('GROUP_ROSTER_UPDATE', refresh)
     end
-
-    obs:Notify('GROUP_ROSTER_UPDATE')
+    getRoster(1)
 end
 local function eventCOMBAT_LOG_EVENT_UNFILTERED()
 end
@@ -46,25 +60,34 @@ function events:InAGroup()
         return
     end
 
-    eventGROUP_ROSTER_UPDATE()
+    C_Timer.After(.5, function()
+        eventGROUP_ROSTER_UPDATE()
 
-    GLH:UnregisterAllEvents()
-    GLH:RegisterEvent('GROUP_LEFT', eventGROUP_LEFT)
+        GLH:UnregisterAllEvents()
+        GLH:RegisterEvent('GROUP_LEFT', eventGROUP_LEFT)
 
-    GLH:RegisterEvent('GROUP_ROSTER_UPDATE', eventGROUP_ROSTER_UPDATE)
-    GLH:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED', eventCOMBAT_LOG_EVENT_UNFILTERED)
+        GLH:RegisterEvent('GROUP_ROSTER_UPDATE', function()
+            C_Timer.After(.1, eventGROUP_ROSTER_UPDATE)
+        end)
+        GLH:RegisterEvent('UPDATE_INSTANCE_INFO', function() ns.obs:Notify('UPDATE_INSTANCE_INFO') end)
+        GLH:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED', function()
+            C_Timer.After(.1, eventCOMBAT_LOG_EVENT_UNFILTERED)
+        end)
 
-    if not ns.base:IsShown() then ns.base:SetShown(true) end
+        if not ns.base:IsShown() then ns.base:SetShown(true) end
+    end)
 end
 local function eventGROUP_JOINED() events:InAGroup() end
 function events:NotInAGroup()
-    ns.GroupRoster = nil
+    ns.roster = nil
 
     obs:Notify('GROUP_LEFT')
     obs:UnregisterAll()
 
     GLH:UnregisterAllEvents()
     GLH:RegisterEvent('GROUP_JOINED', eventGROUP_JOINED)
+
+    if ns.base:IsShown() then ns.base:SetShown(false) end
 end
 
 local lastRefresh = nil
@@ -73,7 +96,7 @@ function events:Refresh()
 
     lastRefresh = time()
     ns.code:fOut('Refreshing Group Lead Helper...', ns.GLHColor, true)
-    eventGROUP_ROSTER_UPDATE()
+    eventGROUP_ROSTER_UPDATE(true)
     C_Timer.After(1, function() ns.code:fOut('Group Lead Helper Refreshed.', ns.GLHColor, true) end)
 end
 --? End of Event Functions

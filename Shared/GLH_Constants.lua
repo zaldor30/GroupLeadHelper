@@ -45,7 +45,7 @@ ns.BLUE_LONG_HIGHLIGHT = 'communitiesfinder_card_highlight'
 
 ns.MOVE_LOCKED = 'gficon-chest-evergreen-greatvault-incomplete' --'pvptalents-talentborder-locked' --'Professions_Specialization_Lock'
 ns.MOVE_UNLOCKED = 'gficon-chest-evergreen-greatvault-complete' --'pvptalents-talentborder'
-ns.MOVE_HIGHLIGHT = 'gficon-chest-evergreen-greatvault-collect' --'pvptalents-talentborder-glow' --'Professions_Specialization_Lock_Glow'
+ns.MOVE_LOCK_HIGHLIGHT = 'gficon-chest-evergreen-greatvault-collect' --'pvptalents-talentborder-glow' --'Professions_Specialization_Lock_Glow'
 
 -- Font Globals
 ns.ARIAL_FONT = 'Fonts\\ARIAN.ttf'

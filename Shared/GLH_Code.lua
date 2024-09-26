@@ -78,21 +78,19 @@ end
 
 --* GROUP_ROSTER_UPDATE Routines
 function code:GetGroupRoles()
-    if not ns.GroupRoster.groupType then return end
+    if not ns.groupInfo.groupType then return end
 
-    local partyType = strlower(ns.GroupRoster.groupType)
     local tank, healer, dps, unknown, tblTanks, tblHealers = 0, 0, 0, 0, {}, {}
 
-    for i=1,GetNumGroupMembers() do
-        local partyID = (partyType:match('party') and i == 1) and 'player' or partyType..(partyType:match('party') and i - 1 or i)
-        local role = UnitGroupRolesAssigned(partyID)
+    for k, r in pairs(ns.roster) do
+        local role = UnitGroupRolesAssigned(k)
 
         if role == 'TANK' then
             tank = tank + 1
-            tinsert(tblTanks, { GetRaidRosterInfo(i) })
+            tinsert(tblTanks, r)
         elseif role == 'HEALER' then
             healer = healer + 1
-            tinsert(tblHealers, { GetRaidRosterInfo(i) })
+            tinsert(tblHealers, r)
         elseif role == 'DAMAGER' then dps = dps + 1
         else unknown = unknown + 1 end
     end

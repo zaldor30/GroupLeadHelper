@@ -44,7 +44,6 @@ function core:StartMiniMapIcon() --* Start Mini Map Icon
         icon = ns.icon,
         OnClick = function(_, button)
             if button == 'LeftButton' and ns.base:IsShown() then ns.base:SetShown(false)
-            elseif button == 'LeftButton' and not ns.base:IsShown() then ns.base:SetShown(true)
             elseif button == 'RightButton' then Settings.OpenToCategory('Guild Recruiter') end
         end,
         OnTooltipShow = function(GameTooltip)

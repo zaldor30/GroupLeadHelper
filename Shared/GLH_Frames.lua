@@ -26,8 +26,8 @@ function frames:ResetFrame(frame)
     frame:Hide()
 end
 -- Function to get a frame from the pool or create a new one
-function frames:CreateFrame(frameType, name, parent, backdropTemplate)
-    local useBackdrop = backdropTemplate or false
+function frames:CreateFrame(frameType, name, parent, useBackdrop, backdropTemplate)
+    local useBackdrop = useBackdrop or false
     -- Check if a frame is available in the pool
     local frame = table.remove(FramePool)
 
@@ -38,7 +38,8 @@ function frames:CreateFrame(frameType, name, parent, backdropTemplate)
         -- If using the BackdropTemplate, set up the backdrop
         if useBackdrop then
             frame:SetBackdrop(backdropTemplate or ns.BackdropTemplate())
-            frame:SetBackdropColor(0, 0, 0, 0.5)  -- Example: semi-transparent black background
+            frame:SetBackdropColor(0, 0, 0, 0.7)
+            frame:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
         end
     else
         -- Reuse frame, reset its properties
@@ -52,11 +53,9 @@ function frames:CreateFrame(frameType, name, parent, backdropTemplate)
                 Mixin(frame, BackdropTemplateMixin)  -- Ensure the backdrop is available
             end
             frame:SetBackdrop(backdropTemplate or ns.BACKDROP_TEMPLATE)
-            frame:SetBackdropColor(0, 0, 0, 0.5)
-        else
-            -- Clear the backdrop if not required
-            frame:SetBackdrop(nil)
-        end
+            frame:SetBackdropColor(0, 0, 0, 0.7)
+            frame:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+        else frame:SetBackdrop(nil) end
     end
 
     frame:Show()
