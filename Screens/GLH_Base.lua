@@ -31,7 +31,7 @@ function base:SetShown(val)
         if self.tblFrame.frame then
             self.tblFrame.frame:SetShown(val)
             ns.gi:SetShown(val)
-            --ns.iconBuffs:SetShown(val)
+            ns.iconBuffs:SetShown(val)
         end
 
         return
@@ -46,7 +46,7 @@ function base:SetShown(val)
 
     self.tblFrame.frame:SetShown(val)
     ns.gi:SetShown(val)
-    --ns.iconBuffs:SetShown(val)
+    ns.iconBuffs:SetShown(val)
 end
 function base:CreateBaseFrame()
     --* Create the Base Frame

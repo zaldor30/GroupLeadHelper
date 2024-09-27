@@ -42,4 +42,4 @@ Shared\GLH_Constants.lua
 
 Screens\GLH_Base.lua
 Screens\GLH_GroupInfo.lua
-#Screens\GLH_IconBuffs.lua
+Screens\GLH_IconBuffs.lua

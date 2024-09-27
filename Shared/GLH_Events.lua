@@ -5,6 +5,7 @@ ns.events, ns.obs = {}, {}
 local events, obs = ns.events, ns.obs
 
 --* Event Functions
+ns.cleuEvents = {}
 local function eventGROUP_ROSTER_UPDATE(refresh)
     local groupType, groupOut = IsInRaid() and 'RAID' or 'PARTY', IsInRaid() and L['RAID'] or L['PARTY']
 
@@ -50,7 +51,19 @@ local function eventGROUP_ROSTER_UPDATE(refresh)
     end
     getRoster(1)
 end
+local cleuRunning = false
 local function eventCOMBAT_LOG_EVENT_UNFILTERED()
+    if cleuRunning then return end
+
+    local _, event = CombatLogGetCurrentEventInfo()
+    if not ns.cleuEvents[event] then return end
+    cleuRunning = true
+
+    local tblCLEU = { CombatLogGetCurrentEventInfo() }
+    C_Timer.After(.2, function()
+        obs:Notify('CLEU', tblCLEU)
+        cleuRunning = false
+    end)
 end
 
 local function eventGROUP_LEFT() events:NotInAGroup() end
@@ -70,9 +83,7 @@ function events:InAGroup()
             C_Timer.After(.1, eventGROUP_ROSTER_UPDATE)
         end)
         GLH:RegisterEvent('UPDATE_INSTANCE_INFO', function() ns.obs:Notify('UPDATE_INSTANCE_INFO') end)
-        GLH:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED', function()
-            C_Timer.After(.1, eventCOMBAT_LOG_EVENT_UNFILTERED)
-        end)
+        GLH:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED', eventCOMBAT_LOG_EVENT_UNFILTERED)
 
         if not ns.base:IsShown() then ns.base:SetShown(true) end
     end)

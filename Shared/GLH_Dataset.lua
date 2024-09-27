@@ -72,7 +72,6 @@ function ds:GetMultiBuffs()
             ['SHAMAN'] = true,
             ['HUNTER'] = true,
             ['MAGE'] = true,
-            ['DRUID'] = true,
             ['EVOKER'] = true,
         }},
     }
