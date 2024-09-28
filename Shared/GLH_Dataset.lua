@@ -72,15 +72,15 @@ function ds:GetMultiBuffs()
             ['SHAMAN'] = true,
             ['HUNTER'] = true,
             ['MAGE'] = true,
-            ['DRUID'] = true,
             ['EVOKER'] = true,
         }},
     }
 end
-function ds:SortBuffsByID(tbl)
-    if not tbl then return end
+function ds:SortBuffsByID(tblIncoming)
+    if not tblIncoming then return end
 
-    for k, v in pairs(tbl) do
+    local tbl = {}
+    for k, v in pairs(tblIncoming) do
         tbl[v.id] = v
         tbl[v.id].key = k
     end
