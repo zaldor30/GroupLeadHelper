@@ -3,7 +3,7 @@
 
 ## Interface: 110002
 ## Title: Group Lead Helper
-## Version: 1.0.1
+## Version: 1.0.2
 ## Notes: Easy track important information about your group members.
 ## Author: Moonfury
 ## SavedVariables: GroupLeadHelperDB
