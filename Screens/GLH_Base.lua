@@ -53,7 +53,7 @@ function base:CreateBaseFrame()
     local f = ns.frames:CreateFrame('Frame', 'GLH_BaseFrame', UIParent, 'USE_BACKDROP')
     f:SetFrameStrata(ns.BACKGROUND_STRATA)
     f:SetClampedToScreen(true)
-    f:SetSize(300, 150)
+    f:SetSize(250, 125)
     f:SetPoint(ns.p.screenPos.point, ns.p.screenPos.x, ns.p.screenPos.y)
     f:SetMovable(false)
     f:EnableMouse(true)
@@ -66,7 +66,7 @@ function base:CreateBaseFrame()
     --* Create the Top Frame (Horde/Alliance)
     local top = ns.frames:CreateFrame('Frame', 'GLH_BaseFrameTop', f)
     top:EnableMouse(false)
-    top:SetPoint('BOTTOM', f, 'TOP', -2, -20)
+    top:SetPoint('BOTTOM', f, 'BOTTOM', -2, -15)
     top:SetSize(f:GetWidth(), 40)
     self.tblFrame.top = top
 
@@ -78,9 +78,9 @@ end
 function base:CreateButtonBar()
     --* Close Button
     local bX, bY = 20, 20 -- Button X, Button Y (Size)
-    local f = ns.frames:CreateFrame('Button', 'GLH_CloseBase_Button', self.tblFrame.top)
+    local f = ns.frames:CreateFrame('Button', 'GLH_CloseBase_Button', self.tblFrame.frame)
     f:SetSize(bX, bY)
-    f:SetPoint('TOPRIGHT', self.tblFrame.top, 'BOTTOMRIGHT', -3, 0)
+    f:SetPoint('TOPRIGHT', self.tblFrame.frame, 'TOPRIGHT', -5, -5)
     f:SetNormalAtlas(ns.CLOSE)
     f:SetPushedAtlas(ns.CLOSE_PRESSED)
     f:SetHighlightAtlas(ns.CLOSE_HIGHLIGHT)
@@ -88,7 +88,7 @@ function base:CreateButtonBar()
     f:SetScript('OnClick', function() self:SetShown(false) end)
 
     --* Minimize Button
-    local fMin = ns.frames:CreateFrame('Button', 'GLH_MinimizeBase_Button', self.tblFrame.top)
+    local fMin = ns.frames:CreateFrame('Button', 'GLH_MinimizeBase_Button', self.tblFrame.frame)
     fMin:SetSize(bX, bY)
     fMin:SetPoint('RIGHT', f, 'LEFT', 0, 0)
     fMin:SetNormalAtlas(ns.MINIMIZE)
@@ -98,7 +98,7 @@ function base:CreateButtonBar()
     fMin:SetScript('OnClick', function() self.tblFrame.frame:SetShown(false) end)
 
     --* Refresh Button
-    local fRefresh = ns.frames:CreateFrame('Button', 'GLH_RefreshBase_Button', self.tblFrame.top)
+    local fRefresh = ns.frames:CreateFrame('Button', 'GLH_RefreshBase_Button', self.tblFrame.frame)
     fRefresh:SetSize(bX, bY)
     fRefresh:SetPoint('RIGHT', fMin, 'LEFT', 0, 0)
     fRefresh:SetNormalAtlas(ns.REFRESH)
@@ -109,7 +109,7 @@ function base:CreateButtonBar()
 
     --* Lock Button
     local waitTimer = nil
-    local fLock = ns.frames:CreateFrame('Button', 'GLH_LockBase_Button', self.tblFrame.top)
+    local fLock = ns.frames:CreateFrame('Button', 'GLH_LockBase_Button', self.tblFrame.frame)
     fLock:SetSize(bX, bY)
     fLock:SetPoint('RIGHT', fRefresh, 'LEFT', 0, 0)
     fLock:SetNormalAtlas(ns.MOVE_LOCKED)

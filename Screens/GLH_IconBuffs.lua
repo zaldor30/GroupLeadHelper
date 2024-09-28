@@ -10,8 +10,12 @@ local function eventGroupRosterUpdate(refresh)
 end
 local isRunning = false
 local function eventCLEU(tblCLEU)
+    local sID = tblCLEU[10]
     if isRunning then return
-    elseif tblCLEU[2] == 'SPELL_AURA_APPLIED' or tblCLEU[2] == 'SPELL_AURA_REMOVED' then
+    
+    --* Using sID 1297, seems to be the id that is sent with Battle Shout (6673) aura
+    elseif ns.roster[tblCLEU[5]] and (sID == 1297 or ns.tblBuffsByID[sID] or ns.tblMultiBuffsByID[sID]) and
+        (tblCLEU[2] == 'SPELL_AURA_APPLIED' or tblCLEU[2] == 'SPELL_AURA_REMOVED') then
         isRunning = true
         buffs:UpdateBuffs()
         buffs:UpdateCounts()
@@ -105,9 +109,9 @@ end
 --* Create Row 1 Icon Buffs Frame
 local iconHeight = 30
 function buffs:CreateRow1Frame()
-    local fRow1 = ns.frames:CreateFrame('Frame', 'GLH_BuffIcons_Row1', ns.gi.tblFrame.frame)
-    fRow1:SetPoint("CENTER", ns.gi.tblFrame.frame, "CENTER", 0, -(iconHeight/2) + 15)
-    fRow1:SetSize(ns.gi.tblFrame.frame:GetWidth(), iconHeight)
+    local fRow1 = ns.frames:CreateFrame('Frame', 'GLH_BuffIcons_Row1', ns.base.tblFrame.frame)
+    fRow1:SetPoint("CENTER", ns.base.tblFrame.frame, "CENTER", 0, (iconHeight / 2) + 5)
+    fRow1:SetSize(ns.base.tblFrame.frame:GetWidth(), iconHeight)
     fRow1:SetShown(true)
     self.tblFrame.row1 = fRow1
 
@@ -118,7 +122,7 @@ end
 --* Create Row 2 Icon Buffs Frame
 function buffs:CreateRow2Frame()
     local fRow2 = ns.frames:CreateFrame('Frame', 'GLH_BuffIcons_Row2', ns.gi.tblFrame.frame)
-    fRow2:SetPoint("TOP", self.tblFrame.row1, "BOTTOM", 0, -5)
+    fRow2:SetPoint("TOP", self.tblFrame.row1, "BOTTOM", 0, -2)
     fRow2:SetSize(ns.gi.tblFrame.frame:GetWidth(), iconHeight)
     fRow2:SetShown(true)
     self.tblFrame.row2 = fRow2

@@ -85,9 +85,10 @@ function gi:CreateFrame()
     --? End of Group Comp Frame
 
     --* Create the Group Leader Frame
-    local fLeader = ns.frames:CreateFrame('Button', 'GLH_GroupInfoLeader', f)
-    fLeader:SetPoint('TOPLEFT', fComp, 'BOTTOMLEFT', 0, -2)
-    fLeader:SetPoint('BOTTOMRIGHT', baseFrame.fLock, 'BOTTOMLEFT', 0, -2)
+    local fLeader = ns.frames:CreateFrame('Button', 'GLH_GroupInfoLeader', ns.base.tblFrame.frame)
+    fLeader:SetPoint('TOPLEFT', ns.base.tblFrame.frame, 'TOPLEFT', 0, -5)
+    fLeader:SetPoint('BOTTOMRIGHT', ns.base.tblFrame.fLock, 'BOTTOMRIGHT', 0, 0)
+    fLeader:SetSize(50, 20)
     fLeader:SetHighlightAtlas(ns.BLUE_LONG_HIGHLIGHT)
     fLeader:EnableMouse(true)
     self.tblFrame.fLeader = fLeader
@@ -97,7 +98,7 @@ function gi:CreateFrame()
     lText:SetPoint('BOTTOMRIGHT', fLeader, 'BOTTOMRIGHT', 0, 0)
     lText:SetJustifyH('LEFT')
     lText:SetJustifyV('MIDDLE')
-    lText:SetFont(ns.DEFAULT_FONT, 14)
+    lText:SetFont(ns.DEFAULT_FONT, 12)
     lText:SetTextColor(1, 1, 1, 1)
     lText:SetWordWrap(false)
     lText:SetText('Group Leader')
@@ -109,17 +110,17 @@ function gi:CreateFrame()
 
     --* Create the Difficulty Frame
     local fDiff = ns.frames:CreateFrame('Button', 'GLH_GroupInfoDiff', f)
-    fDiff:SetPoint('BOTTOMLEFT', f, 'BOTTOMLEFT', 2, 2)
-    fDiff:SetSize(f:GetWidth()/2, 20)
+    fDiff:SetPoint('BOTTOM', ns.base.tblFrame.top, 'TOP', 2, -8)
+    fDiff:SetSize(f:GetWidth(), 20)
     fDiff:EnableMouse(false)
     self.tblFrame.fDiff = fDiff
 
     local dText = fDiff:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
     dText:SetPoint('TOPLEFT', fDiff, 'TOPLEFT', 0, 0)
     dText:SetPoint('BOTTOMRIGHT', fDiff, 'BOTTOMRIGHT', 0, 0)
-    dText:SetJustifyH('LEFT')
+    dText:SetJustifyH('CENTER')
     dText:SetJustifyV('MIDDLE')
-    dText:SetFont(ns.DEFAULT_FONT, 14)
+    dText:SetFont(ns.DEFAULT_FONT, 12)
     dText:SetTextColor(1, 1, 1, 1)
     dText:SetText(ns.groupInfo.groupOut..'')
     self.tblFrame.diffText = dText
@@ -128,7 +129,7 @@ end
 
 --* Group Comp Functions
 local compOut = nil
-local tankIcon, healerIcon, dpsIcon, unknownIcon = '|A:'..ns.TANK_LFR_ICON..':20:20|a', '|A:'..ns.HEALER_LFR_ICON..':20:20|a', '|A:'..ns.DPS_LFR_ICON..':20:20|a', '|A:'..ns.UNKNOWN_LFR_ICON..':20:20|a'
+local tankIcon, healerIcon, dpsIcon, unknownIcon = '|A:'..ns.TANK_LFR_ICON..':14:14|a', '|A:'..ns.HEALER_LFR_ICON..':14:14|a', '|A:'..ns.DPS_LFR_ICON..':14:14|a', '|A:'..ns.UNKNOWN_LFR_ICON..':14:14|a'
 function gi:CompIndicators(tanks, healers, dps, unknown)
     local players = GetNumGroupMembers()
     local tblComps = self.tblComps[ns.groupInfo.groupType]
@@ -225,7 +226,7 @@ function gi:UpdateLeader(refresh)
     self.leader = ns.groupInfo.leader[1]
     local roleIcon = ns.groupInfo.leader[2] == 'TANK' and tankIcon or ns.groupInfo.leader[2] == 'HEALER' and healerIcon or dpsIcon
     local offline = ns.roster[self.leader].isOnline and '' or ' (Offline)'
-    local out = L['LEADER']..': '..roleIcon..' '..ns.code:cPlayer(ns.groupInfo.leader[1], ns.groupInfo.leader[2])..offline
+    local out = roleIcon..' '..ns.code:cPlayer(ns.groupInfo.leader[1], ns.groupInfo.leader[2])..offline
     ns.frames:CreateFadeAnimation(self.tblFrame.leaderText, out)
 end
 function gi:CreateGroupLeaderToolTip()
