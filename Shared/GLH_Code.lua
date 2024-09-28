@@ -1,8 +1,7 @@
 local _, ns = ... -- Namespace (myaddon, namespace)
-local L = LibStub("AceLocale-3.0"):GetLocale('GroupLeadHelper')
 
-ns.code, ns.obs = {}, {}
-local code, obs = ns.code, ns.obs
+ns.code = {}
+local code = ns.code
 
 --* Console print routines
 function code:consolePrint(msg, color, noPrefix)
@@ -79,21 +78,19 @@ end
 
 --* GROUP_ROSTER_UPDATE Routines
 function code:GetGroupRoles()
-    if not ns.GroupRoster.groupType then return end
+    if not ns.groupInfo.groupType then return end
 
-    local partyType = strlower(ns.GroupRoster.groupType)
     local tank, healer, dps, unknown, tblTanks, tblHealers = 0, 0, 0, 0, {}, {}
 
-    for i=1,GetNumGroupMembers() do
-        local partyID = (partyType:match('party') and i == 1) and 'player' or partyType..(partyType:match('party') and i - 1 or i)
-        local role = UnitGroupRolesAssigned(partyID)
+    for k, r in pairs(ns.roster) do
+        local role = UnitGroupRolesAssigned(k)
 
         if role == 'TANK' then
             tank = tank + 1
-            tinsert(tblTanks, { GetRaidRosterInfo(i) })
+            tinsert(tblTanks, r)
         elseif role == 'HEALER' then
             healer = healer + 1
-            tinsert(tblHealers, { GetRaidRosterInfo(i) })
+            tinsert(tblHealers, r)
         elseif role == 'DAMAGER' then dps = dps + 1
         else unknown = unknown + 1 end
     end
@@ -147,39 +144,3 @@ function code:DeepCopy(orig)
     end
     return copy
 end
-
---* notify Functions
-function obs:Init()
-    self.notify = {}
-end
-function obs:Register(event, callback)
-    if not event or not callback then return end
-
-    if not self.notify[event] then self.notify[event] = {} end
-    table.insert(self.notify[event], callback)
-end
-function obs:Unregister(event, callback)
-    if not event or not callback then return end
-    if not self.notify[event] then return end
-    for i=#self.notify[event],1,-1 do
-        if self.notify[event][i] == callback then
-            table.remove(self.notify[event], i)
-        end
-    end
-end
-function obs:UnregisterAll(event)
-    if not event then return end
-    if not self.notify[event] then return end
-    for i=#self.notify[event],1,-1 do
-        table.remove(self.notify[event], i)
-    end
-end
-function obs:Notify(event, ...)
-    if not event or not self.notify[event] then return end
-
-    for i=1,#self.notify[event] do
-        if self.notify[event][i] then
-            self.notify[event][i](...) end
-    end
-end
-obs:Init()

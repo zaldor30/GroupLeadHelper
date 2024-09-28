@@ -2,73 +2,78 @@ local _, ns = ... -- Namespace (myaddon, namespace)
 local L = LibStub("AceLocale-3.0"):GetLocale('GroupLeadHelper')
 
 ns.iconBuffs = {}
-local iBuffs, gBuffs = {}, ns.iconBuffs
+local buffs = ns.iconBuffs
 
-local lastRoster = nil
 local function eventGroupRosterUpdate(refresh)
-    if not ns.GroupRoster then return end
-
-    if lastRoster and GetTime() - lastRoster < 1 then return
-    elseif not IsInGroup() or not ns.GroupRoster.groupType or not ns.GroupRoster.groupOut then return end
-    lastRoster = GetTime()
-
-    iBuffs:UpdateBuffs(refresh)
-    iBuffs:UpdateCounts(refresh)
+    buffs:UpdateBuffs(refresh)
+    buffs:UpdateCounts(refresh)
 end
-
-local lastAuraUpdate, auraRunning = nil, false
-local function eventCLEU(...)
-    if auraRunning then return end
-
-    local _, event, _, _, _, _, _, _, _, _, _, sID, sName = ...
-    if event == 'SPELL_AURA_APPLIED' or event == 'SPELL_AURA_REMOVED' then
-        if lastAuraUpdate and GetTime() - lastAuraUpdate < .5 then return
-        elseif ns.tblBuffsByID[sID] or ns.tblMultiBuffsByID[sID] then
-            auraRunning = true
-            lastAuraUpdate = GetTime()
-            C_Timer.After(.2, function()
-                iBuffs:UpdateBuffs()
-                iBuffs:UpdateCounts()
-                auraRunning = false
-            end)
-        end
+local isRunning = false
+local function eventCLEU(tblCLEU)
+    local sID = tblCLEU[10]
+    if isRunning then return
+    
+    --* Using sID 1297, seems to be the id that is sent with Battle Shout (6673) aura
+    elseif ns.roster[tblCLEU[5]] and (sID == 1297 or ns.tblBuffsByID[sID] or ns.tblMultiBuffsByID[sID]) and
+        (tblCLEU[2] == 'SPELL_AURA_APPLIED' or tblCLEU[2] == 'SPELL_AURA_REMOVED') then
+        isRunning = true
+        buffs:UpdateBuffs()
+        buffs:UpdateCounts()
+        isRunning = false
     end
 end
 
-function iBuffs:Init()
+function buffs:Init()
     self.tblFrame = {}
 
     self.tblBuffs = {}
     self.tblMultiBuffs = {}
     self.tblClasses = nil
 end
-function iBuffs:IsShown() return self.tblFrame.frame or false end
-function iBuffs:SetShown(val)
+function buffs:IsShown() return (self.tblFrame and self.tblFrame.frame) and self.tblFrame.frame:IsShown() or false end
+function buffs:SetShown(val)
     if not val then
-        self.tblFrame.row1:SetShown(val)
-        self.tblFrame.row2:SetShown(val)
+        if self.tblFrame and self.tblFrame.row1 then
+            self.tblFrame.row1:SetShown(val)
+            self.tblFrame.row2:SetShown(val)
+
+            ns.cleuEvents['SPELL_AURA_APPLIED'] = nil
+            ns.cleuEvents['SPELL_AURA_REMOVED'] = nil
+
+            ns.obs:Unregister('CLEU:ICON_BUFFS', eventCLEU)
+            ns.obs:Unregister('GROUP_ROSTER_UPDATE', eventGroupRosterUpdate)
+        end
         return
     end
 
-    if not self.tblFrame.row1 then self:CreateRowFrames() end
+    if not self.tblFrame or not self.tblFrame.row1 then
+        self:Init()
+        self:CreateRow1Frame()
+        self:CreateRow2Frame()
+    end
 
     self.tblFrame.row1:SetShown(val)
     self.tblFrame.row2:SetShown(val)
 
-    ns.obs:Register('CLEU:ICON_BUFFS', eventCLEU)
+    --* CLEU Subevents to look for
+    ns.cleuEvents['SPELL_AURA_APPLIED'] = true
+    ns.cleuEvents['SPELL_AURA_REMOVED'] = true
+
+    ns.obs:Register('CLEU', eventCLEU)
     ns.obs:Register('GROUP_ROSTER_UPDATE', eventGroupRosterUpdate)
 
-    eventGroupRosterUpdate(true)
+    self:UpdateBuffs(true)
+    self:UpdateCounts(true)
 end
 
---* Create Buff Icon Frames
+--* Create Icon Buffs Frame
 local defaultFontSize = 25
-function iBuffs:CreateIconFrames(tbl, parentFrame, iconSize, spacing, tableUsed)
+function buffs:CreateIconFrames(tbl, parentFrame, iconSize, spacing, tableUsed)
     local totalWidth = (iconSize * #tbl) + (spacing * (#tbl - 1))
         local startX = (parentFrame:GetWidth() - totalWidth) / 2
 
         for k, v in ipairs(tbl) do
-            local icon = ns.frames:CreateFrame('GLH_BuffIcon_'..k, parentFrame, false, nil, 'Button')
+            local icon = ns.frames:CreateFrame('Button', 'GLH_BuffIcon_'..k, parentFrame)
             icon:SetHighlightTexture(ns.BLUE_HIGHLIGHT)
             icon:SetSize(iconSize, iconSize)
             v.iconFrame = icon
@@ -90,7 +95,7 @@ function iBuffs:CreateIconFrames(tbl, parentFrame, iconSize, spacing, tableUsed)
             numberText:SetTextColor(1, 1, 1, 1)
             v.iconFrame.text = numberText
 
-            icon:SetScript('OnEnter', function(self) iBuffs:CreateIconTooltip(k, tableUsed) end)
+            icon:SetScript('OnEnter', function(self) buffs:CreateIconTooltip(k, tableUsed) end)
             icon:SetScript('OnLeave', function(self) GameTooltip:Hide() end)
 
             if k == 1 then icon:SetPoint("LEFT", parentFrame, "LEFT", startX, 0)
@@ -99,75 +104,63 @@ function iBuffs:CreateIconFrames(tbl, parentFrame, iconSize, spacing, tableUsed)
 
         return tbl
 end
-function iBuffs:CreateRowFrames()
-    local iconHeight = 35
-    local fRow1 = ns.frames:CreateFrame('GLH_BuffIcons_Row1', ns.base.tblBase.frame)
-    fRow1:SetPoint("CENTER", ns.base.tblBase.frame, "CENTER", 0, (iconHeight/2) -10)
-    fRow1:SetSize(ns.base.tblBase.frame:GetWidth(), iconHeight)
+--? End of Icon Buffs Frame
+
+--* Create Row 1 Icon Buffs Frame
+local iconHeight = 30
+function buffs:CreateRow1Frame()
+    local fRow1 = ns.frames:CreateFrame('Frame', 'GLH_BuffIcons_Row1', ns.base.tblFrame.frame)
+    fRow1:SetPoint("CENTER", ns.base.tblFrame.frame, "CENTER", 0, (iconHeight / 2) + 5)
+    fRow1:SetSize(ns.base.tblFrame.frame:GetWidth(), iconHeight)
     fRow1:SetShown(true)
     self.tblFrame.row1 = fRow1
 
     self.tblBuffs = self:CreateIconFrames(ns.tblIconBuffs, fRow1, iconHeight, 2, 'BUFFS')
+end
+--? Create Row 2 Icon Buffs Frame
 
-    iconHeight = 30
-    local fRow2 = ns.frames:CreateFrame('GLH_BuffIcons_Row1', ns.base.tblBase.frame)
-    fRow2:SetPoint("TOP", fRow1, "BOTTOM", 0, -5)
-    fRow2:SetSize(ns.base.tblBase.frame:GetWidth(), iconHeight)
+--* Create Row 2 Icon Buffs Frame
+function buffs:CreateRow2Frame()
+    local fRow2 = ns.frames:CreateFrame('Frame', 'GLH_BuffIcons_Row2', ns.gi.tblFrame.frame)
+    fRow2:SetPoint("TOP", self.tblFrame.row1, "BOTTOM", 0, -2)
+    fRow2:SetSize(ns.gi.tblFrame.frame:GetWidth(), iconHeight)
     fRow2:SetShown(true)
     self.tblFrame.row2 = fRow2
 
-    self.tblMultiBuffs = self:CreateIconFrames(ns.tblIconMulti, fRow2, iconHeight, 2, 'MULTI_BUFFS')
+    self.tblMultiBuffs = self:CreateIconFrames(ns.tblIconMulti, fRow2, iconHeight - 5, 2, 'MULTI_BUFFS')
 end
---? End of Buff Icon Frames
+--? End of Create Row 2 Icon Buffs Frame
 
---* Create Buff Update Routine
+--* Buff Update/Tooltip Functions
 local tblOldBuffs, tblOldMulti, tblBuffsFound, tblClasses = {}, {}, {}, {}
-function iBuffs:UpdateBuffs(refresh, count)
-    --* Prep Tables
-    tblBuffsFound, tblClasses = {}, {}
-    tblOldMulti = {}
+function buffs:UpdateBuffs(refresh)
+    if not ns.roster then return end
 
-    tblOldMulti = ns.code:DeepCopy(self.tblMultiBuffs)
-
+    tblBuffsFound, tblOldMulti, tblClasses = {}, ns.code:DeepCopy(self.tblMultiBuffs), {}
     self.tblMultiBuffs = ns.tblIconMulti
 
     --* Find all buffs
-    local finished = true
-    for i=1, GetNumGroupMembers() do
-        local name = GetRaidRosterInfo(i)
-        if not name then finished = false break end
-
-        --name, icon, count, debuffType, duration, expirationTime, source, isStealable, nameplateShowPersonal, spellId
-        AuraUtil.ForEachAura(name, 'HELPFUL', 1, function(...)
+    for _, v in pairs(ns.roster) do
+        AuraUtil.ForEachAura(v.name, 'HELPFUL', 1, function(...)
             local aura = { ... }
             if ns.tblBuffsByID[aura[10]] then
                 local key = ns.tblBuffsByID[aura[10]].key
                 if not tblBuffsFound[aura[10]] then
-                    tblBuffsFound[aura[10]] = {
-                        ['key'] = key,
-                        ['count'] = 1
-                    }
+                    tblBuffsFound[aura[10]] = { key = key, count = 1 }
                 else tblBuffsFound[aura[10]].count = tblBuffsFound[aura[10]].count + 1 end
             elseif ns.tblMultiBuffsByID[aura[10]] then
                 local key = ns.tblMultiBuffsByID[aura[10]].key
                 if not tblBuffsFound[aura[10]] then
-                    tblBuffsFound[aura[10]] = {
-                        ['key'] = key,
-                        ['count'] = 1
-                    }
+                    tblBuffsFound[aura[10]] = { key = key, count = 1 }
                 else tblBuffsFound[aura[10]].count = tblBuffsFound[aura[10]].count + 1 end
             end
         end)
 
-        local class = select(6, GetRaidRosterInfo(i))
+        local class = v.classFile
         tblClasses[class] = (tblClasses[class] or 0) + 1
     end
-    if not finished then
-        if count > 10 then ns.code:dOut('Failed to find all buffs.', ns.GLHColor, true) return
-        else C_Timer.After(1, function() iBuffs:UpdateBuffs(refresh, count+1) end) end
-    end
 
-    --* Update Count Only Multi Buffs
+    --* Update Multi Buff Counts
     for k, v in ipairs(self.tblMultiBuffs) do
         v.iconFrame.texture:SetVertexColor(0.5, 0.5, 0.5, 1)
         v.iconFrame.overlay:SetAtlas(nil)
@@ -195,12 +188,13 @@ function iBuffs:UpdateBuffs(refresh, count)
     end
     tblOldMulti = nil
 end
-function iBuffs:UpdateCounts(refresh)
-    tblOldBuffs = {}
+function buffs:UpdateCounts(refresh)
     tblOldBuffs = ns.code:DeepCopy(self.tblBuffs)
     self.tblBuffs = ns.tblIconBuffs
 
     local function updateIcon(k, v)
+        if v.countOnly then return end
+
         v.iconFrame.texture:SetVertexColor(0.5, 0.5, 0.5, 1)
         v.iconFrame.text:SetText('')
         v.iconFrame.overlay:SetAtlas(nil)
@@ -245,13 +239,27 @@ function iBuffs:UpdateCounts(refresh)
     end
     tblOldBuffs = nil
 end
---? End of Buff Update Routine
+function buffs:CreateIconTooltip(k, tableUsed)
+    local tbl = tableUsed == 'BUFFS' and ns.tblIconBuffs or ns.tblIconMulti
+    local v = tbl[k]
+    if not v or not v.id then return end
 
---* Create Tooltip Routine
-function iBuffs:CreateIconTooltip(key, tbl)
+    local title = v.name..(v.countOnly and '' or ' Buffed: '..v.count..'/'..GetNumGroupMembers())
+    local msg = ns.code:wordWrap(C_Spell.GetSpellDescription(v.id))..'\n \nCapable Classes:\n'
+
+    local count = 0
+
+    local cSorted = ns.code:sortTableByField(v.class)
+
+    for _, r in pairs(cSorted or {}) do
+        count = count < 3 and count + 1 or 1
+        msg = msg..ns.code:cText(ns.ds.tblClassesByFile[r].classColor, ns.ds.tblClassesByFile[r].className)
+        msg = count < 3 and msg..', ' or msg..'\n'
+    end
+
+    msg = msg:trim()
+    if string.sub(msg, -1) == ',' then msg = string.sub(msg, 1, -2) end
+    ns.code:createTooltip(title, msg)
+    
 end
---? End of Tooltip Routine
-
-iBuffs:Init()
-
-function gBuffs:SetShown(val) iBuffs:SetShown(val) end
+--? End of Buff Update/Tooltip Functions

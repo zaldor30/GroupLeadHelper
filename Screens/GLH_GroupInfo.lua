@@ -1,181 +1,139 @@
 local _, ns = ... -- Namespace (myaddon, namespace)
 local L = LibStub("AceLocale-3.0"):GetLocale('GroupLeadHelper')
 
-ns.groupInfo = {}
-local gi, groupInfo = {}, ns.groupInfo
+ns.gi = {}
+local gi = ns.gi
 
---* Event Routines
-local function eventGroupRosterUpdate(refresh)
-    if not IsInGroup() or not ns.GroupRoster.groupType or not ns.GroupRoster.groupOut then return end
-
-    gi:UpdateGroupComposition(refresh)
-    if ns.GroupRoster.leader and (gi.oldLeader ~= ns.GroupRoster.leader[1] or refresh) then
-        gi.oldLeader = ns.GroupRoster.leader[1]
-        local cName = UnitIsConnected(ns.GroupRoster.leader[1]) and ns.code:cPlayer(ns.GroupRoster.leader[1], ns.GroupRoster.leader[2]) or ns.code:cPlayer(ns.GroupRoster.leader[1], nil, 'FF808080')
-        ns.frames:CreateFadeAnimation(gi.tblFrame.leaderText, (L['LEADER']..': '..cName))
-    end
-
-    local dID = ns.GroupRoster.groupType == 'raid' and GetRaidDifficultyID() or GetDungeonDifficultyID()
-    if gi.oldDifficulty ~= dID or refresh then
-        local difficulty = gi:UpdateDifficulty(refresh)
-        if difficulty then ns.frames:CreateFadeAnimation(gi.tblFrame.diffText, difficulty) end
-    end
-
-    local iID = select(8, GetInstanceInfo())
-    if gi.oldInstance ~= iID or refresh then
-        gi.oldInstance = iID
-        --gi:UpdateInstance()
-    end
+local function obsMOVING_FRAME(isLocked)
+    gi.tblFrame.frame:EnableMouse(isLocked)
+    gi.tblFrame.fComp:EnableMouse(isLocked)
+    gi.tblFrame.fLeader:EnableMouse(isLocked)
+end
+local function eventGROUP_ROSTER_UPDATE(refresh)
+    if not gi:IsShown() then return end
+    gi:UpdateGroupComp(refresh)
+    gi:UpdateLeader(refresh)
+    gi:UpdateDifficulty(refresh)
+end
+local function obsUPDATE_INSTANCE_INFO()
 end
 
+--* Group Info Functions
 function gi:Init()
-    self.tblFrame = self.tblFrame or {}
+    self.tblComps = ns.ds:GetComps()
+    self.activeComp = nil
+    self.oldDifficulty = nil
 
-    self.oldLeader = nil
-    self.oldInstance = nil
-    self.oldGroupType, self.oldDifficulty = nil, nil
+    self.leader, self.assistants = nil, {}
+    self.tblTanks, self.tblHealers = {}, {}
     self.tanks, self.healers, self.dps, self.unknown = 0, 0, 0, 0
 
-    self.activeComp = nil -- CompID
-    self.tblComps = {}
+    self.tblFrame = {}
 end
-function groupInfo:Init()
-    self.tblClasses = {}
-
-    self.instanceID = nil
-    self.instance = nil
-    self.iColor = nil
-end
-function groupInfo:SetShown(val)
+function gi:IsShown() return (self.tblFrame and self.tblFrame.frame) and self.tblFrame.frame:IsShown() or false end
+function gi:SetShown(val)
     if not val then
-        if gi.tblFrame.frame then gi.tblFrame.frame:SetShown(val) end
-
-        GLH:UnregisterEvent('UPDATE_INSTANCE_INFO')
-        GLH:UnregisterEvent('PLAYER_ENTERING_WORLD')
-        GLH:UnregisterEvent('ZONE_CHANGED_NEW_AREA')
-
-        gi:Init()
+        if self.tblFrame.frame then self.tblFrame.frame:SetShown(val) end
         return
-    elseif gi.tblFrame.frame and gi.tblFrame.frame:IsShown() then return end
-
-    ns.obs:Register('GROUP_LEFT', function()
-        gi.tblFrame.frame:SetShown(false)
-    end)
-    ns.obs:Register('GROUP_ROSTER_UPDATE', eventGroupRosterUpdate)
-
-    local function updateInstanceInfo()
-        gi:UpdateDifficulty(true)
-        gi:GetInstanceInfo()
-    end
-    GLH:RegisterEvent('UPDATE_INSTANCE_INFO', updateInstanceInfo)
-    GLH:RegisterEvent('PLAYER_ENTERING_WORLD', updateInstanceInfo)
-    GLH:RegisterEvent('ZONE_CHANGED_NEW_AREA', updateInstanceInfo)
-
-    gi.tblComps = ns.ds:GetComps()
-    gi:CreateBaseFrame()
-    gi:UpdateGroupComposition()
-
-    if ns.groupRoster and ns.GroupRoster.leader and ns.GroupRoster.leader[1] and ns.GroupRoster.leader[1] ~= '' then
-        gi.oldLeader = ns.GroupRoster.leader[1]
-        local cName = UnitIsConnected(ns.GroupRoster.leader[1]) and ns.code:cPlayer(ns.GroupRoster.leader[1], ns.GroupRoster.leader[2]) or ns.code:cPlayer(ns.GroupRoster.leader[1], nil, 'FF808080')
-        ns.frames:CreateFadeAnimation(gi.tblFrame.leaderText, (L['LEADER']..': '..cName))
     end
 
-    local difficulty = gi:UpdateDifficulty()
-    if difficulty then ns.frames:CreateFadeAnimation(gi.tblFrame.diffText, difficulty) end
-    gi:GetInstanceInfo()
+    ns.obs:Register('MOVING_FRAME', obsMOVING_FRAME)
+    ns.obs:Register('GROUP_ROSTER_UPDATE', eventGROUP_ROSTER_UPDATE)
+    ns.obs:Register('UPDATE_INSTANCE_INFO', obsUPDATE_INSTANCE_INFO)
 
-    gi.tblFrame.frame:SetShown(val)
-    ns.groupInfo.tblFrame = gi.tblFrame
+    if not self.tblFrame or not self.tblFrame.frame then
+        self:Init()
+        self:CreateFrame()
+    end
+
+    self:UpdateGroupComp()
+    self:UpdateLeader()
+    self:UpdateDifficulty()
+    self.tblFrame.frame:SetShown(val)
 end
-function gi:CreateBaseFrame()
-    --* Create Group Composition Frame
-    local f = self.tblFrame.frame or CreateFrame('Button', 'GLH_GroupInfoFrame', ns.base.tblBase.top)
-    f:SetSize(ns.base.tblBase.top:GetWidth(), 30)
-    f:SetPoint('CENTER', ns.base.tblBase.top, 'CENTER', 0, 0)
-    f:SetHighlightAtlas(ns.BLUE_LONG_HIGHLIGHT)
+function gi:CreateFrame()
+    local baseFrame = ns.base.tblFrame
 
-    local text = f:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
-    text:SetPoint('TOPLEFT', f, 'TOPLEFT', 0, -4)
-    text:SetPoint('BOTTOMRIGHT', f, 'BOTTOMRIGHT', 0, 0)
+    --* Create the Base Frame
+    local f = ns.frames:CreateFrame('Frame', 'GLH_GroupInfoFrame', baseFrame.frame)
+    f:SetPoint('TOPLEFT', baseFrame.top, 'TOPLEFT', 5, 0)
+    f:SetPoint('BOTTOMRIGHT', baseFrame.frame, 'BOTTOMRIGHT', -5, 0)
+    f:EnableMouse(true)
+    self.tblFrame.frame = f
+    --? End of Base Frame
+
+    --* Create the Group Comp Frame
+    local fComp = ns.frames:CreateFrame('Button', 'GLH_GroupInfoComp', f)
+    fComp:SetPoint('TOPLEFT', baseFrame.top, 'TOPLEFT', 2, -5)
+    fComp:SetPoint('BOTTOMRIGHT', baseFrame.top, 'BOTTOMRIGHT', -2, 2)
+    fComp:SetHighlightAtlas(ns.BLUE_LONG_HIGHLIGHT)
+    fComp:EnableMouse(true)
+    self.tblFrame.fComp = fComp
+
+    local text = fComp:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+    text:SetPoint('TOPLEFT', fComp, 'TOPLEFT', 0, 0)
+    text:SetPoint('BOTTOMRIGHT', fComp, 'BOTTOMRIGHT', 0, 0)
     text:SetJustifyH('CENTER')
     text:SetJustifyV('MIDDLE')
     text:SetFont(ns.DEFAULT_FONT, 16)
     text:SetTextColor(1, 1, 1, 1)
-
-    f:SetScript('OnEnter', function(self) gi:CreateGroupCompTooltip() end)
-    f:SetScript('OnLeave', function(self) GameTooltip:Hide() end)
-
-    self.tblFrame.frame = f
+    text:SetText('Group Comp')
     self.tblFrame.compText = text
-    --? End of Group Composition Frame
 
-    --* Create Group Leader Frame
-    local lFrame = self.tblFrame.leaderFrame or CreateFrame('Button', 'GLH_GroupLeaderFrame', ns.base.tblBase.top)
-    lFrame:SetPoint('TOPLEFT', f, 'BOTTOMLEFT', 7, 0)
-    lFrame:SetPoint('BOTTOMRIGHT', ns.base.tblBase.fLock, 'BOTTOMLEFT', 0, 0)
-    lFrame:SetHighlightAtlas(ns.BLUE_LONG_HIGHLIGHT)
+    fComp:SetScript('OnEnter', function(self) gi:CreateGroupCompTooltip() end)
+    fComp:SetScript('OnLeave', function(self) GameTooltip:Hide() end)
+    --? End of Group Comp Frame
 
-    local lText = lFrame:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
-    lText:SetPoint('LEFT', 2, 0)
+    --* Create the Group Leader Frame
+    local fLeader = ns.frames:CreateFrame('Button', 'GLH_GroupInfoLeader', ns.base.tblFrame.frame)
+    fLeader:SetPoint('TOPLEFT', ns.base.tblFrame.frame, 'TOPLEFT', 0, -5)
+    fLeader:SetPoint('BOTTOMRIGHT', ns.base.tblFrame.fLock, 'BOTTOMRIGHT', 0, 0)
+    fLeader:SetSize(50, 20)
+    fLeader:SetHighlightAtlas(ns.BLUE_LONG_HIGHLIGHT)
+    fLeader:EnableMouse(true)
+    self.tblFrame.fLeader = fLeader
+
+    local lText = fLeader:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+    lText:SetPoint('TOPLEFT', fLeader, 'TOPLEFT', 7, 0)
+    lText:SetPoint('BOTTOMRIGHT', fLeader, 'BOTTOMRIGHT', 0, 0)
     lText:SetJustifyH('LEFT')
     lText:SetJustifyV('MIDDLE')
-    lText:SetFont(ns.DEFAULT_FONT, 14)
+    lText:SetFont(ns.DEFAULT_FONT, 12)
     lText:SetTextColor(1, 1, 1, 1)
     lText:SetWordWrap(false)
+    lText:SetText('Group Leader')
     self.tblFrame.leaderText = lText
 
-    lFrame:SetScript('OnEnter', function(self) gi:CreateGroupLeaderToolTip() end)
-    lFrame:SetScript('OnLeave', function(self) GameTooltip:Hide() end)
-    self.tblFrame.leaderFrame = lFrame
+    fLeader:SetScript('OnEnter', function(self) gi:CreateGroupLeaderToolTip() end)
+    fLeader:SetScript('OnLeave', function(self) GameTooltip:Hide() end)
     --? End of Group Leader Frame
 
-    --* Create Group Difficulty Frame
-    local dFrame = self.tblFrame.diffFrame or CreateFrame('Button', 'GLH_GroupDifficultyFrame', ns.base.tblBase.top)
-    dFrame:SetPoint('BOTTOMLEFT', ns.base.tblBase.frame, 'BOTTOMLEFT', 5, 3)
-    dFrame:SetSize(ns.base.tblBase.frame:GetWidth() / 2, 25)
-    --dFrame:SetHighlightAtlas(ns.BLUE_LONG_HIGHLIGHT)
-    self.tblFrame.diffFrame = dFrame
+    --* Create the Difficulty Frame
+    local fDiff = ns.frames:CreateFrame('Button', 'GLH_GroupInfoDiff', f)
+    fDiff:SetPoint('BOTTOM', ns.base.tblFrame.top, 'TOP', 2, -8)
+    fDiff:SetSize(f:GetWidth(), 20)
+    fDiff:EnableMouse(false)
+    self.tblFrame.fDiff = fDiff
 
-    local dText = dFrame:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
-    dText:SetPoint('LEFT', 5, 0)
-    dText:SetJustifyH('LEFT')
+    local dText = fDiff:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
+    dText:SetPoint('TOPLEFT', fDiff, 'TOPLEFT', 0, 0)
+    dText:SetPoint('BOTTOMRIGHT', fDiff, 'BOTTOMRIGHT', 0, 0)
+    dText:SetJustifyH('CENTER')
     dText:SetJustifyV('MIDDLE')
-    dText:SetFont(ns.DEFAULT_FONT, 14)
+    dText:SetFont(ns.DEFAULT_FONT, 12)
     dText:SetTextColor(1, 1, 1, 1)
+    dText:SetText(ns.groupInfo.groupOut..'')
     self.tblFrame.diffText = dText
-    --? End of Group Difficulty Frame
-
-    --* Create Group Instance Frame
-    local iFrame = self.tblFrame.iFrame or CreateFrame('Button', 'GLH_GroupDifficultyFrame', ns.base.tblBase.top)
-    iFrame:SetPoint('TOPLEFT', dFrame, 'TOPRIGHT', 0, 2)
-    iFrame:SetPoint('BOTTOMRIGHT', ns.base.tblBase.frame, 'BOTTOMRIGHT', 0, 2)
-    iFrame:SetWidth(ns.base.tblBase.frame:GetWidth() / 2)
-    iFrame:SetHighlightAtlas(ns.BLUE_LONG_HIGHLIGHT)
-
-    local iText = iFrame:CreateFontString(nil, 'ARTWORK', 'GameFontNormal')
-    iText:SetPoint('RIGHT', -5, 0)
-    iText:SetJustifyH('RIGHT')
-    iText:SetJustifyV('MIDDLE')
-    iText:SetFont(ns.DEFAULT_FONT, 14)
-    iText:SetTextColor(1, 1, 1, 1)
-    iText:SetWidth(iFrame:GetWidth())
-    iText:SetWordWrap(false)
-    self.tblFrame.iText = iText
-
-    iFrame:SetScript('OnEnter', function(self) gi:GetInstanceTooltip() end)
-    iFrame:SetScript('OnLeave', function(self) GameTooltip:Hide() end)
-    self.tblFrame.iFrame = iFrame
-    --? End of Group Instance Frame
+    --? End of Difficulty Frame
 end
 
---* Update Group Composition
+--* Group Comp Functions
 local compOut = nil
-local tankIcon, healerIcon, dpsIcon, unknownIcon = '|A:'..ns.TANK_LFR_ICON..':20:20|a', '|A:'..ns.HEALER_LFR_ICON..':20:20|a', '|A:'..ns.DPS_LFR_ICON..':20:20|a', '|A:'..ns.UNKNOWN_LFR_ICON..':20:20|a'
+local tankIcon, healerIcon, dpsIcon, unknownIcon = '|A:'..ns.TANK_LFR_ICON..':14:14|a', '|A:'..ns.HEALER_LFR_ICON..':14:14|a', '|A:'..ns.DPS_LFR_ICON..':14:14|a', '|A:'..ns.UNKNOWN_LFR_ICON..':14:14|a'
 function gi:CompIndicators(tanks, healers, dps, unknown)
     local players = GetNumGroupMembers()
-    local tblComps = self.tblComps[ns.GroupRoster.groupType]
-    if not tblComps then return end
+    local tblComps = self.tblComps[ns.groupInfo.groupType]
+    if not tblComps then return tanks, healers, dps, unknown end
 
     for k, v in pairs(tblComps) do
         if v.startSize <= players and v.endSize >= players then
@@ -183,7 +141,7 @@ function gi:CompIndicators(tanks, healers, dps, unknown)
             break
         end
     end
-    if not activeComp then return tanks, healers, dps, unknown, nil end
+    if not self.activeComp then return tanks, healers, dps, unknown, nil end
 
     local buildComp = tblComps[self.activeComp].name
 
@@ -192,13 +150,13 @@ function gi:CompIndicators(tanks, healers, dps, unknown)
         tanks = ns.code:cText('FFFF0000', tanks) end
 
     healers = healers or 0
-    local addPad = ns.GroupRoster.groupType == 'RAID' and 1 or 0
+    local addPad = ns.groupInfo.groupType == 'RAID' and 1 or 0
     if healers < tblComps[self.activeComp].healer or healers > tblComps[self.activeComp].healer + addPad then
         healers = ns.code:cText('FFFF0000', healers)
     elseif healers == tblComps[self.activeComp].healer + addPad then ns.code:cText('FFFFFF00', healers) end
 
     dps = dps or 0
-    addPad = ns.GroupRoster.groupType == 'RAID' and 2 or 0
+    addPad = ns.groupInfo.groupType == 'RAID' and 2 or 0
     if dps < tblComps[self.activeComp].dps or dps > tblComps[self.activeComp].dps + addPad then
         dps = ns.code:cText('FFFF0000', dps)
     elseif dps == tblComps[self.activeComp].dps then return tanks, healers, dps, unknown, buildComp
@@ -206,20 +164,20 @@ function gi:CompIndicators(tanks, healers, dps, unknown)
 
     return tanks, healers, dps, unknown, buildComp
 end
+function gi:UpdateGroupComp(refresh)
+    if not ns.groupInfo or not ns.groupInfo.groupOut then return end
 
-function gi:UpdateGroupComposition(refresh)
-    if not ns.GroupRoster or not ns.GroupRoster.groupOut then return end
+    local tanks, healers, dps, unknown, tblTanks, tblHealers = ns.code:GetGroupRoles()
+    self.tblTanks, self.tblHealers = tblTanks, tblHealers
 
-    local tanks, healers, dps, unknown = ns.code:GetGroupRoles()
-
-    if not refresh and self.oldGroupType == ns.GroupRoster.groupType and self.tanks == tanks and self.healers == healers and
+    if not refresh and self.oldGroupType == ns.groupInfo.groupType and self.tanks == tanks and self.healers == healers and
         self.dps == dps and self.unknown == unknown then return end
     self.tanks, self.healers, self.dps, self.unknown = (tanks or 0), (healers or 0), (dps or 0), (unknown or 0)
 
     tanks, healers, dps, unknown = gi:CompIndicators(tanks, healers, dps, unknown)
 
-    self.oldGroupType = ns.GroupRoster.groupType
-    compOut = ns.GroupRoster.groupOut..': '..tankIcon..(tanks or 0)..'  '..healerIcon..(healers or 0)..'  '..dpsIcon..(dps or 0)--..' '..unknownIcon..' Unknown'
+    self.oldGroupType = ns.groupInfo.groupType
+    compOut = ns.groupInfo.groupOut..': '..tankIcon..(tanks or 0)..'  '..healerIcon..(healers or 0)..'  '..dpsIcon..(dps or 0)--..' '..unknownIcon..' Unknown'
 
     ns.frames:CreateFadeAnimation(self.tblFrame.compText, compOut)
 end
@@ -228,141 +186,105 @@ function gi:CreateGroupCompTooltip()
     if not buildComp then return end
 
     local title = 'Group Composition'..' ('..tankIcon..(tanks or 0)..'  '..healerIcon..(healers or 0)..'  '..dpsIcon..(dps or 0)..')'
-    local body = 'Players in Group: '..GetNumGroupMembers()..'\nIdeal Composition: '..buildComp
+    local body = 'Players in Group: '..GetNumGroupMembers()..'\nIdeal Composition: '..buildComp..'\n'
 
-    ns.code:createTooltip(title, body, 'FORCE_TOOLTIP')
-end
---? End of Group Composition
-
---* Create Group Leader Tooltip
-function gi:GetGroupLeaders()
-    local gLead = ''
-    local title, body = ns.GroupRoster.groupType..' Leader', '\n \nAssistants:\n'
-
-    if IsInRaid() then
-        for i=1, GetNumGroupMembers() do
-            local unit, rank = GetRaidRosterInfo(i)
-            if not unit then unit = UnitName('player') end
-
-            local connected = UnitIsConnected(unit)
-            if rank == 1 then
-                body = '\n'..body..(not connected and '<offline> ' or '')..ns.code:cPlayer(unit, UnitClassBase(unit))
-            elseif rank == 2 then
-                body = 'Leader: '..(not connected and '<offline> ' or '')..ns.code:cPlayer(unit, UnitClassBase(unit))..body
-                gLead = 'Leader: '..ns.code:cPlayer(unit, UnitClassBase(unit))..(not connected and ' <offline>' or '')
-            end
+    local colCount, tankfound = 0, false
+    for _, r in pairs(self.tblTanks) do
+        tankfound = true
+        colCount = colCount + 1
+        local name = ns.code:cPlayer(r.name, r.classFile)
+        local offline = r.isOnline and '' or ' (Offline)'
+        if colCount == 1 then body = body..'\n'..tankIcon..' '..name..offline
+        else
+            colCount = 0
+            body = body..' '..tankIcon..' '..name..offline
         end
-    elseif ns.GroupRoster.groupType == 'Party' then
-        for i=1, GetNumGroupMembers() do
-            local unit = GetRaidRosterInfo(i)
-            if not unit then unit = UnitName('player') end
+    end
+    body = tankfound and body..'\n' or body
 
-            if UnitIsGroupLeader(unit) then
-                local connected = UnitIsConnected(unit)
-                body = 'Leader: '..(not connected and '<offline> ' or '')..ns.code:cPlayer(unit, UnitClassBase(unit))
-                gLead = 'Leader: '..ns.code:cPlayer(unit, UnitClassBase(unit))..(not connected and ' <offline>' or '')
-                break
-            end
+    colCount = 0
+    for _, r in pairs(self.tblHealers) do
+        colCount = colCount + 1
+        local name = ns.code:cPlayer(r.name, r.classFile)
+        local offline = r.isOnline and '' or ' (Offline)'
+        if colCount == 1 then body = body..'\n'..healerIcon..' '..name..offline
+        else
+            colCount = 0
+            body = body..' '..healerIcon..' '..name..offline
         end
     end
 
-    return title, body, gLead
+    ns.code:createTooltip(title, body, 'FORCE_TOOLTIP')
+end
+--? End of Group Comp Functions
+
+--* Group Leader Functions
+function gi:UpdateLeader(refresh)
+    if not ns.groupInfo or not ns.groupInfo.leader then return
+    elseif not refresh and self.leader == ns.groupInfo.leader[1] then return end
+
+    self.leader = ns.groupInfo.leader[1]
+    local roleIcon = ns.groupInfo.leader[2] == 'TANK' and tankIcon or ns.groupInfo.leader[2] == 'HEALER' and healerIcon or dpsIcon
+    local offline = ns.roster[self.leader].isOnline and '' or ' (Offline)'
+    local out = roleIcon..' '..ns.code:cPlayer(ns.groupInfo.leader[1], ns.groupInfo.leader[2])..offline
+    ns.frames:CreateFadeAnimation(self.tblFrame.leaderText, out)
 end
 function gi:CreateGroupLeaderToolTip()
-    if not ns.GroupRoster or not ns.GroupRoster.groupType or not ns.GroupRoster.leader  then return end
+    local title = ns.groupInfo.groupOut..' '..L['LEADER']..':'
 
-    local title, body = L['GROUP_LEADER'], '\n \n'..L['GROUP_ASSISTANT']..':\n'
-    local gLead = ns.GroupRoster.groupOut..' '..L['LEADER']..': '..ns.code:cPlayer(ns.GroupRoster.leader[1], ns.GroupRoster.leader[2])
-    gLead = UnitIsConnected(ns.GroupRoster.leader[1]) and gLead or gLead..ns.code:cText('FF808080', ' <offline>')
+    local roleIcon = ns.groupInfo.leader[2] == 'TANK' and tankIcon or ns.groupInfo.leader[2] == 'HEALER' and healerIcon or dpsIcon
+    local offline = ns.roster[ns.groupInfo.leader[1]].isOnline and '' or ' (Offline)'
+    local body = roleIcon..' '..ns.code:cPlayer(ns.groupInfo.leader[1], ns.groupInfo.leader[2])..offline
 
-    local tblOffline = {}
-    for i=1, GetNumGroupMembers() do
-        local unit,_,_,_,_,_,_, online = GetRaidRosterInfo(i)
-        tblOffline[unit] = online
-    end
-    if #ns.GroupRoster.assistants > 0 then
-        for i=1, #ns.GroupRoster.assistants do
-            local unit = ns.GroupRoster.assistants[i]
-            body = body..ns.code:cPlayer(unit[1], unit[2])..(tblOffline[unit[1]] and '' or ns.code:cText('FF808080', ' <offline>'))..'\n'
+    if ns.groupInfo.groupType == 'RAID' then
+        local colCount = 0
+        body = body..'\n \n'..L['GROUP_ASSISTANT']..':'
+        for _, a in pairs(ns.groupInfo.assistants) do
+            colCount = colCount + 1
+            roleIcon = a[2] == 'TANK' and tankIcon or a[2] == 'HEALER' and healerIcon or dpsIcon
+            offline = ns.roster[a[1]].isOnline and '' or ' (Offline)'
+            if colCount == 1 then body = body..'\n'..roleIcon..' '..ns.code:cPlayer(a[1], a[2])..offline
+            else
+                colCount = 0
+                body = body..'\n'..roleIcon..' '..ns.code:cPlayer(a[1], a[2])..offline
+            end
         end
-        body = gLead..body
-    else body = gLead end
+    end
 
     ns.code:createTooltip(title, body, 'FORCE_TOOLTIP')
 end
---? End of Group Leader
+--? End of Group Leader Functions
 
---* Difficulty frame
+--* Group Difficulty Functions
 function gi:UpdateDifficulty(refresh)
-    if not ns.groupRoster then return end
+    if not ns.groupInfo then return end
 
     local dColor = nil
-        local msgDifficulty = 'Difficulty: '..ns.code:cText('FFFF0000', 'Unknown')
-        local dungeonID = ns.GroupRoster.groupType == 'PARTY' and GetDungeonDifficultyID() or nil
-        local rID = ns.GroupRoster.groupType == 'RAID' and GetRaidDifficultyID() or nil
+    local header = ns.groupInfo.groupType == 'RAID' and L['RAID'] or 'Dungeon'
+    local msgDifficulty = header..': '..ns.code:cText('FFFF0000', 'Unknown')
+    local dungeonID = ns.groupInfo.groupType == 'PARTY' and GetDungeonDifficultyID() or nil
+    local rID = ns.groupInfo.groupType == 'RAID' and GetRaidDifficultyID() or nil
 
-        if not gi.oldDifficulty or refresh or dungeonID ~= gi.oldDifficulty or
-            rID == gi.oldDifficulty then
+    if not self.oldDifficulty or refresh or dungeonID ~= self.oldDifficulty or
+        rID == self.oldDifficulty then
 
-            if dungeonID then
-                if dungeonID == 1 then dColor = ns.RARE_COLOR msgDifficulty = 'Difficulty: '..ns.code:cText(dColor, 'Normal')
-                elseif dungeonID == 2 then dColor = ns.EPIC_COLOR msgDifficulty = 'Difficulty: '..ns.code:cText(dColor, 'Heroic')
-                elseif dungeonID == 23 then dColor = ns.LEGENDARY_COLOR msgDifficulty = 'Difficulty: '..ns.code:cText(dColor, 'Mythic')
-                else msgDifficulty = 'Difficulty: '..ns.code:cText('FFFF0000', 'Invalid') end
-            elseif rID then
-                if rID == 17 then dColor = ns.UNCOMMON_COLOR msgDifficulty = 'Difficulty: '..ns.code:cText(dColor, 'LFR')
-                elseif rID == 14 then dColor = ns.RARE_COLOR msgDifficulty = 'Difficulty: '..ns.code:cText(dColor, 'Normal')
-                elseif rID == 15 then dColor = ns.EPIC_COLOR msgDifficulty = 'Difficulty: '..ns.code:cText(dColor, 'Heroic')
-                elseif rID == 16 then dColor = ns.LEGENDARY_COLOR msgDifficulty = 'Difficulty: '..ns.code:cText(dColor, 'Mythic')
-                else msgDifficulty = L['DIFFICULTY']..': '..ns.code:cText('FFFF0000', 'Invalid') end
-            else return end
-
-            gi.oldDifficulty = dungeonID or rID
+        if dungeonID then
+            if dungeonID == 1 then dColor = ns.RARE_COLOR msgDifficulty = header..': '..ns.code:cText(dColor, 'Normal')
+            elseif dungeonID == 2 then dColor = ns.EPIC_COLOR msgDifficulty = header..': '..ns.code:cText(dColor, 'Heroic')
+            elseif dungeonID == 23 then dColor = ns.LEGENDARY_COLOR msgDifficulty = header..': '..ns.code:cText(dColor, 'Mythic')
+            else msgDifficulty = header..': '..ns.code:cText('FFFF0000', 'Invalid') end
+        elseif rID then
+            if rID == 17 then dColor = ns.UNCOMMON_COLOR msgDifficulty = header..': '..ns.code:cText(dColor, 'LFR')
+            elseif rID == 14 then dColor = ns.RARE_COLOR msgDifficulty = header..': '..ns.code:cText(dColor, 'Normal')
+            elseif rID == 15 then dColor = ns.EPIC_COLOR msgDifficulty = header..': '..ns.code:cText(dColor, 'Heroic')
+            elseif rID == 16 then dColor = ns.LEGENDARY_COLOR msgDifficulty = header..': '..ns.code:cText(dColor, 'Mythic')
+            else msgDifficulty = header..': '..ns.code:cText('FFFF0000', 'Invalid') end
         else return end
 
-        return msgDifficulty, dColor
+        self.oldDifficulty = dungeonID or rID
+        ns.frames:CreateFadeAnimation(self.tblFrame.diffText, msgDifficulty)
+    else return end
+
+    return msgDifficulty, dColor
 end
---? End of Difficulty frame
-
---* Instance Tooltip
-function gi:GetInstanceInfo()
-    --[[
-    1. name
-    2. instanceType
-    3. difficultyID
-    4. difficultyName
-    5. maxPlayers
-    6. dynamicDifficulty
-    7. isDynamic
-    8. instanceID
-    9. instanceGroupSize
-    10. LfgDungeonID
-    --]]
-
-    local info = { GetInstanceInfo() }
-    local _, iColor = gi:UpdateDifficulty(true)
-
-    if not iColor or not info[8] or info[8] == 1152 or info[8] == 1331 then
-        self.tblFrame.iFrame:SetShown(false)
-        self.instanceID, self.instance, self.iColor = nil, nil, nil
-        return
-    elseif self.instanceID == info[8] then return end
-
-    self.tblFrame.iFrame:SetShown(true)
-    self.instanceID = info[8]
-    self.instance = info[1]
-    self.iColor = iColor
-
-    ns.frames:CreateFadeAnimation(self.tblFrame.iText, ns.code:cText(iColor or 'FFFFFFFF', info[1]))
-end
-function gi:GetInstanceTooltip()
-    if not self.instance then return end
-
-    local title = L['INSTANCE']..': '..self.instance
-    local body = (gi:UpdateDifficulty(true))
-
-    ns.code:createTooltip(title, body, 'FORCE_TOOLTIP')
-end
---? End of Instance Tooltip
-gi:Init()
-groupInfo:Init()
+--? End of Group Difficulty Functions
