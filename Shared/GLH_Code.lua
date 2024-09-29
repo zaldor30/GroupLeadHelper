@@ -78,7 +78,7 @@ end
 
 --* GROUP_ROSTER_UPDATE Routines
 function code:GetGroupRoles()
-    if not ns.groupInfo.groupType then return end
+    if not ns.roster or not ns.groupInfo.groupType then return end
 
     local tank, healer, dps, unknown, tblTanks, tblHealers = 0, 0, 0, 0, {}, {}
 

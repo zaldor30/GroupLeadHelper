@@ -12,9 +12,9 @@ local isRunning = false
 local function eventCLEU(tblCLEU)
     local sID = tblCLEU[10]
     if isRunning then return
-    
+
     --* Using sID 1297, seems to be the id that is sent with Battle Shout (6673) aura
-    elseif ns.roster[tblCLEU[5]] and (sID == 1297 or ns.tblBuffsByID[sID] or ns.tblMultiBuffsByID[sID]) and
+    elseif (sID == 1297 or ns.tblBuffsByID[sID] or ns.tblMultiBuffsByID[sID]) and
         (tblCLEU[2] == 'SPELL_AURA_APPLIED' or tblCLEU[2] == 'SPELL_AURA_REMOVED') then
         isRunning = true
         buffs:UpdateBuffs()
@@ -140,6 +140,7 @@ function buffs:UpdateBuffs(refresh)
     self.tblMultiBuffs = ns.tblIconMulti
 
     --* Find all buffs
+    tblClasses = {}
     for _, v in pairs(ns.roster) do
         AuraUtil.ForEachAura(v.name, 'HELPFUL', 1, function(...)
             local aura = { ... }
@@ -157,7 +158,8 @@ function buffs:UpdateBuffs(refresh)
         end)
 
         local class = v.classFile
-        tblClasses[class] = (tblClasses[class] or 0) + 1
+        if class then
+            tblClasses[class] = (tblClasses[class] or 0) + 1 end
     end
 
     --* Update Multi Buff Counts

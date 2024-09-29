@@ -122,7 +122,6 @@ function gi:CreateFrame()
     dText:SetJustifyV('MIDDLE')
     dText:SetFont(ns.DEFAULT_FONT, 12)
     dText:SetTextColor(1, 1, 1, 1)
-    dText:SetText(ns.groupInfo.groupOut..'')
     self.tblFrame.diffText = dText
     --? End of Difficulty Frame
 end
