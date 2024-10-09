@@ -34,11 +34,11 @@ locales\Locales.xml
 GLH_Init.lua
 GLH_Core.lua
 
-GLH_Code.lua
-GLH_Events.lua
-GLH_Frames.lua
-GLH_Dataset.lua
-GLH_Constants.lua
+Shared\GLH_Code.lua
+Shared\GLH_Events.lua
+Shared\GLH_Frames.lua
+Shared\GLH_Dataset.lua
+Shared\GLH_Constants.lua
 
 GLH_Base.lua
 #GLH_GroupInfo.lua
