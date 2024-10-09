@@ -10,8 +10,10 @@ function ds:Init()
     ns.tblIconBuffs = self:GetBuffs()
     ns.tblIconMulti = self:GetMultiBuffs()
 
-    ns.tblBuffsByID = self:SortBuffsByID(ns.tblIconBuffs)
-    ns.tblMultiBuffsByID = self:SortBuffsByID(ns.tblIconMulti)
+    ns.tblBuffsByID = ns.code:sortTableByField(ns.tblIconBuffs, 'id')
+    ns.tblBuffsByName = ns.code:sortTableByField(ns.tblIconBuffs, 'name')
+    ns.tblMultiBuffsByID = ns.code:sortTableByField(ns.tblIconMulti, 'id')
+    ns.tblMultiBuffsByName = ns.code:sortTableByField(ns.tblIconMulti, 'name')
 end
 function ds:WhatsNew() -- What's new in the current version
     local height = 410 -- Adjust size of what's new window
@@ -72,20 +74,9 @@ function ds:GetMultiBuffs()
             ['SHAMAN'] = true,
             ['HUNTER'] = true,
             ['MAGE'] = true,
-            ['EVOKER'] = true,
-        }},
+            ['EVOKER'] = true, }
+        },
     }
-end
-function ds:SortBuffsByID(tblIncoming)
-    if not tblIncoming then return end
-
-    local tbl = {}
-    for k, v in pairs(tblIncoming) do
-        tbl[v.id] = v
-        tbl[v.id].key = k
-    end
-
-    return tbl
 end
 function ds:GetComps()
     return {
@@ -102,4 +93,3 @@ function ds:GetComps()
         },
     }
 end
-ds:Init()

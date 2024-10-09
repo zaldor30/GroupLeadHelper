@@ -40,6 +40,6 @@ Shared\GLH_Frames.lua
 Shared\GLH_Dataset.lua
 Shared\GLH_Constants.lua
 
-#Screens\GLH_Base.lua
+Screens\GLH_Base.lua
 #Screens\GLH_GroupInfo.lua
 #Screens\GLH_IconBuffs.lua
