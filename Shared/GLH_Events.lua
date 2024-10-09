@@ -17,7 +17,7 @@ local function fuckDelves(outOfDelve)
         GLH:UnregisterAllEvents()
         GLH:RegisterEvent('GROUP_ROSTER_UPDATE', eventGROUP_ROSTER_UPDATE)
         ns.code:cOut('Group Lead Helper is disabled during delves.', ns.GLHColor, true)
-        ns.notify('GROUP_LEFT')
+        obs.Notify('GROUP_LEFT')
     elseif inADelve and outOfDelve then
         inADelve = false
         events:InAGroup()
@@ -38,6 +38,7 @@ local function RosterUpdate(refresh)
     local retry, brannFound, groupCount = false, false, 0
     local function getRoster(try)
         if brannFound and groupCount == GetNumGroupMembers() then return end
+        groupCount = GetNumGroupMembers()
 
         for i=1,GetNumGroupMembers() do
             local rosterRec = { GetRaidRosterInfo(i) }
@@ -76,16 +77,13 @@ end
 eventGROUP_ROSTER_UPDATE = RosterUpdate
 local cleuRunning = false
 local function eventCOMBAT_LOG_EVENT_UNFILTERED()
-    if cleuRunning then return end
-
     local _, event = CombatLogGetCurrentEventInfo()
     if not ns.cleuEvents[event] then return end
     cleuRunning = true
 
     local tblCLEU = { CombatLogGetCurrentEventInfo() }
-    C_Timer.After(.2, function()
+    C_Timer.After(.1, function()
         obs:Notify('CLEU', tblCLEU)
-        cleuRunning = false
     end)
 end
 local function eventUPDATE_INSTANCE_INFO() obs:Notify('UPDATE_INSTANCE_INFO') end

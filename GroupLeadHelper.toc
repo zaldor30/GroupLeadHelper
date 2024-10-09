@@ -3,7 +3,7 @@
 
 ## Interface: 110002
 ## Title: Group Lead Helper
-## Version: 1.0.3
+## Version: 1.0.4
 ## Notes: Easy track important information about your group members.
 ## Author: Moonfury
 ## SavedVariables: GroupLeadHelperDB
@@ -40,6 +40,6 @@ Shared\GLH_Frames.lua
 Shared\GLH_Dataset.lua
 Shared\GLH_Constants.lua
 
-Screens\GLH_Base.lua
-Screens\GLH_GroupInfo.lua
-Screens\GLH_IconBuffs.lua
+#Screens\GLH_Base.lua
+#Screens\GLH_GroupInfo.lua
+#Screens\GLH_IconBuffs.lua
